@@ -1,0 +1,29 @@
+#
+# RDF4J configuration template for a Scylla RDF repository
+#
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix rep: <http://www.openrdf.org/config/repository#>.
+@prefix sr: <http://www.openrdf.org/config/repository/sail#>.
+@prefix sail: <http://www.openrdf.org/config/sail#>.
+@prefix scylla-rdf: <http://www.openrdf.org/config/sail#scylla-rdf->.
+
+[] a rep:Repository ;
+   rep:repositoryID "{%Repository ID|%}" ;
+   rdfs:label "{%Repository title|%}" ;
+   rep:repositoryImpl [
+      rep:repositoryType "openrdf:SailRepository" ;
+      sr:sailImpl [
+         sail:sailType "openrdf:ScyllaRDFStore" ;
+
+         # Scylla configuration
+
+         scylla-rdf:keyspace "{%Scylla Keyspace|%}" ;
+         scylla-rdf:hosts "{%Scylla Hosts|%}" ;
+         scylla-rdf:port "{%Scylla Port|%}" ;
+
+         # Elasticsearch configuration
+
+         scylla-rdf:elasticsearchHost "{%Elasticsearch Host|%}" ;
+         scylla-rdf:elasticsearchMaxDocuments "{%Elasticsearch Max Documents|%}"
+      ]
+].
