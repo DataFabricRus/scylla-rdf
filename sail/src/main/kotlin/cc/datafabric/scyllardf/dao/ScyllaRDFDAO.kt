@@ -1,6 +1,5 @@
 package cc.datafabric.scyllardf.dao
 
-import cc.datafabric.scyllardf.dao.Coder.CONTEXT_DEFAULT
 import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.PreparedStatement
@@ -12,16 +11,23 @@ import com.google.common.collect.Iterables
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import org.eclipse.rdf4j.common.iteration.CloseableIteration
+import org.eclipse.rdf4j.model.IRI
 import org.eclipse.rdf4j.model.Resource
+import org.eclipse.rdf4j.model.impl.SimpleValueFactory
 import org.eclipse.rdf4j.sail.SailException
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.net.InetAddress
+import java.nio.ByteBuffer
+import java.util.stream.Collectors
 
-class ScyllaRDFDAO private constructor(private val cluster: Cluster, private val keyspace: String) : Closeable {
+class ScyllaRDFDAO private constructor(
+    private val cluster: Cluster, private val keyspace: String
+) : Closeable {
 
     companion object {
         private const val MAX_BATCH_SIZE = 65536
+        private const val MAX_CONCURRENT_ASYNC_QUERIES = 100
 
         private val LOG = LoggerFactory.getLogger(ScyllaRDFDAO::class.java)
 
@@ -93,33 +99,35 @@ class ScyllaRDFDAO private constructor(private val cluster: Cluster, private val
     private lateinit var prepDecrementStatSP: PreparedStatement
     private lateinit var prepDecrementStatPO: PreparedStatement
 
+    private lateinit var prepInsertKnownVocabulariesDictionary: PreparedStatement
+
     private val session: Session = cluster.connect()
 
-    fun insertInSPOC(subj: ByteArray, pred: ByteArray, obj: ByteArray, context: ByteArray): ResultSetFuture {
+    fun insertInSPOC(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
         return session.executeAsync(setBytesUnsafe(prepInsertSPOC.bind(), subj, pred, obj, context))
     }
 
-    fun insertInPOSC(subj: ByteArray, pred: ByteArray, obj: ByteArray, context: ByteArray): ResultSetFuture {
+    fun insertInPOSC(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
         return session.executeAsync(setBytesUnsafe(prepInsertPOSC.bind(), pred, obj, subj, context))
     }
 
-    fun insertInOSPC(subj: ByteArray, pred: ByteArray, obj: ByteArray, context: ByteArray): ResultSetFuture {
+    fun insertInOSPC(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
         return session.executeAsync(setBytesUnsafe(prepInsertOSPC.bind(), obj, subj, pred, context))
     }
 
-    fun insertInCSPO(subj: ByteArray, pred: ByteArray, obj: ByteArray, context: ByteArray): ResultSetFuture {
+    fun insertInCSPO(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
         return session.executeAsync(setBytesUnsafe(prepInsertCSPO.bind(), context, obj, subj, pred))
     }
 
-    fun insertInCPOS(subj: ByteArray, pred: ByteArray, obj: ByteArray, context: ByteArray): ResultSetFuture {
+    fun insertInCPOS(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
         return session.executeAsync(setBytesUnsafe(prepInsertCPOS.bind(), context, obj, subj, pred))
     }
 
-    fun insertInCOSP(subj: ByteArray, pred: ByteArray, obj: ByteArray, context: ByteArray): ResultSetFuture {
+    fun insertInCOSP(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
         return session.executeAsync(setBytesUnsafe(prepInsertCOSP.bind(), context, obj, subj, pred))
     }
 
-    fun incrementStatistics(subj: ByteArray, pred: ByteArray, obj: ByteArray, context: ByteArray)
+    fun incrementStatistics(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer)
         : List<ResultSetFuture> {
         val futures = ArrayList<ResultSetFuture>(6)
 
@@ -155,10 +163,10 @@ class ScyllaRDFDAO private constructor(private val cluster: Cluster, private val
             .orElseThrow { SailException("Couldn't count total number of triples!") }
     }
 
-    fun getContextIDs(): CloseableIteration<ByteArray, SailException> {
+    fun getContextIDs(): CloseableIteration<ByteBuffer, SailException> {
         return TransformRowIteration(session.executeAsync(prepGetContextIds.bind()),
-            { row -> row.getBytesUnsafe(0).array() },
-            { value -> !value!!.contentEquals(Coder.CONTEXT_DEFAULT) })
+            { row -> row.getBytesUnsafe(0) },
+            { value -> value != ScyllaRDFSchema.CONTEXT_DEFAULT })
     }
 
     fun getNamespaces(): CloseableIteration<Array<String>, SailException> {
@@ -189,11 +197,11 @@ class ScyllaRDFDAO private constructor(private val cluster: Cluster, private val
         session.execute(prepDeleteNamespace.bind(prefix))
     }
 
-    fun addStatement(subj: ByteArray, pred: ByteArray, obj: ByteArray) {
+    fun addStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer) {
         addStatementInternal(subj, pred, obj, null).get()
     }
 
-    fun addStatement(subj: ByteArray, pred: ByteArray, obj: ByteArray, contexts: List<ByteArray?>) {
+    fun addStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>) {
         if (12 * contexts.size < MAX_BATCH_SIZE) {
             val batches = contexts
                 .map { addStatementInternal(subj, pred, obj, it) }
@@ -205,11 +213,11 @@ class ScyllaRDFDAO private constructor(private val cluster: Cluster, private val
         }
     }
 
-    fun removeStatements(subj: ByteArray, pred: ByteArray, obj: ByteArray, contexts: List<ByteArray?>) {
+    fun removeStatements(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>) {
         val futures = mutableListOf<ResultSetFuture>()
 
         contexts.forEach {
-            val c = it ?: CONTEXT_DEFAULT
+            val c = it ?: ScyllaRDFSchema.CONTEXT_DEFAULT
 
             futures.add(session.executeAsync(setBytesUnsafe(prepDeleteSPOC.bind(), subj, pred, obj, c)))
             futures.add(session.executeAsync(setBytesUnsafe(prepDeletePOSC.bind(), pred, obj, subj, c)))
@@ -232,15 +240,42 @@ class ScyllaRDFDAO private constructor(private val cluster: Cluster, private val
         Futures.allAsList(futures).get()
     }
 
-    fun getStatements(subj: ByteArray?, pred: ByteArray?, obj: ByteArray?, context: ByteArray?): SPOCIteration {
+    fun getStatements(subj: ByteBuffer?, pred: ByteBuffer?, obj: ByteBuffer?, context: ByteBuffer?): SPOCIteration {
         return SPOCIteration(ResultSetFutureIteration(querySPOC(subj, pred, obj, context)))
     }
 
-    fun getStatements(subj: ByteArray?, pred: ByteArray?, obj: ByteArray?, contexts: List<ByteArray?>)
+    fun getStatements(subj: ByteBuffer?, pred: ByteBuffer?, obj: ByteBuffer?, contexts: List<ByteBuffer?>)
         : SPOCIteration {
         return SPOCIteration(MultipleResultSetFutureIteration(contexts.map {
             querySPOC(subj, pred, obj, it)
         }))
+    }
+
+    fun loadKnownVocabulariesDictionary(): Map<IRI, ByteBuffer> {
+        val valueFactory = SimpleValueFactory.getInstance()
+        return session.execute("SELECT key, value FROM ${ScyllaRDFSchema.Table.CODER_KNOWN_VOCABULARIES}")
+            .all()
+            .stream()
+            .map { row ->
+                Pair(valueFactory.createIRI(row.getString(0)), row.getBytesUnsafe(1))
+            }
+            .collect(Collectors.toMap({ it.first }, { it.second }))
+    }
+
+    fun updateKnownVocabulariesDictionary(dictionary: Map<IRI, ByteBuffer>) {
+        var batch = mutableListOf<ResultSetFuture>()
+        dictionary.forEach { key, value ->
+            batch.add(session.executeAsync(prepInsertKnownVocabulariesDictionary.bind()
+                .setString(0, key.stringValue())
+                .setBytesUnsafe(1, value)
+            ))
+
+            if (batch.size > MAX_CONCURRENT_ASYNC_QUERIES) {
+                Futures.allAsList(batch).get()
+
+                batch = mutableListOf<ResultSetFuture>()
+            }
+        }
     }
 
     override fun close() {
@@ -303,6 +338,12 @@ class ScyllaRDFDAO private constructor(private val cluster: Cluster, private val
          */
         futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.NS} " +
             "(prefix text, name text, PRIMARY KEY(prefix))"))
+
+        /**
+         * Table for the known vocabularies coder
+         */
+        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CODER_KNOWN_VOCABULARIES} " +
+            "(key text, value blob, PRIMARY KEY(key))"))
 
         Futures.allAsList(futures).get()
     }
@@ -425,14 +466,13 @@ class ScyllaRDFDAO private constructor(private val cluster: Cluster, private val
             "SET counter = counter - 1 WHERE subject = ? AND predicate = ?")
         prepDecrementStatPO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_PO} " +
             "SET counter = counter - 1 WHERE predicate = ? AND object = ?")
+
+        prepInsertKnownVocabulariesDictionary = session.prepare(
+            "INSERT INTO ${ScyllaRDFSchema.Table.CODER_KNOWN_VOCABULARIES} (key, value) VALUES (?, ?)")
     }
 
-    private fun querySPOC(subj: ByteArray?, pred: ByteArray?, obj: ByteArray?, context: ByteArray?)
+    private fun querySPOC(subj: ByteBuffer?, pred: ByteBuffer?, obj: ByteBuffer?, context: ByteBuffer?)
         : ResultSetFuture {
-        val c = context ?: CONTEXT_DEFAULT
-
-        LOG.debug("s: {}, p: {}, o: {}, c: {}", subj != null, pred != null, obj != null, context != null)
-
         return if (context == null) {
             if (subj == null) {
                 if (pred == null) {
@@ -467,41 +507,41 @@ class ScyllaRDFDAO private constructor(private val cluster: Cluster, private val
             if (subj == null) {
                 if (pred == null) {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_C.bind(), c))
+                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_C.bind(), context))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_COSP_CO.bind(), c, obj))
+                        session.executeAsync(setBytesUnsafe(prepSelect_COSP_CO.bind(), context, obj))
                     }
                 } else {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CPOS_CP.bind(), c, pred))
+                        session.executeAsync(setBytesUnsafe(prepSelect_CPOS_CP.bind(), context, pred))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CPOS_CPO.bind(), c, pred, obj))
+                        session.executeAsync(setBytesUnsafe(prepSelect_CPOS_CPO.bind(), context, pred, obj))
                     }
                 }
             } else {
                 if (pred == null) {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_CS.bind(), c, subj))
+                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_CS.bind(), context, subj))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_COSP_COS.bind(), c, obj, subj))
+                        session.executeAsync(setBytesUnsafe(prepSelect_COSP_COS.bind(), context, obj, subj))
                     }
                 } else {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_CSP.bind(), c, subj, pred))
+                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_CSP.bind(), context, subj, pred))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_CSPO.bind(), c, subj, pred, obj))
+                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_CSPO.bind(), context, subj, pred, obj))
                     }
                 }
             }
         }
     }
 
-    private fun addStatementInternal(subj: ByteArray, pred: ByteArray, obj: ByteArray, context: ByteArray?)
+    private fun addStatementInternal(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?)
         : ListenableFuture<List<ResultSet>> {
         val indexes = ArrayList<ResultSetFuture>(3)
-        indexes.add(insertInSPOC(subj, pred, obj, CONTEXT_DEFAULT))
-        indexes.add(insertInPOSC(subj, pred, obj, CONTEXT_DEFAULT))
-        indexes.add(insertInOSPC(subj, pred, obj, CONTEXT_DEFAULT))
+        indexes.add(insertInSPOC(subj, pred, obj, ScyllaRDFSchema.CONTEXT_DEFAULT))
+        indexes.add(insertInPOSC(subj, pred, obj, ScyllaRDFSchema.CONTEXT_DEFAULT))
+        indexes.add(insertInOSPC(subj, pred, obj, ScyllaRDFSchema.CONTEXT_DEFAULT))
 
         if (context != null) {
             indexes.add(insertInCSPO(subj, pred, obj, context))
@@ -509,15 +549,14 @@ class ScyllaRDFDAO private constructor(private val cluster: Cluster, private val
             indexes.add(insertInCOSP(subj, pred, obj, context))
         }
 
-        val stats = incrementStatistics(subj, pred, obj, context ?: CONTEXT_DEFAULT)
+        val stats = incrementStatistics(
+            subj, pred, obj, context ?: ScyllaRDFSchema.CONTEXT_DEFAULT)
 
         return Futures.allAsList(Iterables.concat(indexes, stats))
     }
 
-    private fun setBytesUnsafe(bound: BoundStatement, vararg array: ByteArray): BoundStatement {
-        array.forEachIndexed { index, it ->
-            bound.setBytesUnsafe(index, Coder.toByteBuffer(it))
-        }
+    private fun setBytesUnsafe(bound: BoundStatement, vararg array: ByteBuffer): BoundStatement {
+        array.forEachIndexed { index, it -> bound.setBytesUnsafe(index, it) }
 
         return bound
     }

@@ -1,6 +1,5 @@
 package cc.datafabric.scyllardf.sail
 
-import cc.datafabric.scyllardf.dao.Coder
 import cc.datafabric.scyllardf.dao.ScyllaRDFDAO
 import org.eclipse.rdf4j.common.iteration.CloseableIteration
 import org.eclipse.rdf4j.model.IRI
@@ -50,7 +49,7 @@ class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: 
     }
 
     override fun getNamespacesInternal(): CloseableIteration<out Namespace, SailException> {
-        return Coder.toNamespaceIteration(dao.getNamespaces())
+        return sail.getCoder().toNamespaceIteration(dao.getNamespaces())
     }
 
     override fun clearNamespacesInternal() {
@@ -58,14 +57,23 @@ class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: 
     }
 
     override fun getContextIDsInternal(): CloseableIteration<out Resource, SailException> {
-        return Coder.toResourceIteration(dao.getContextIDs())
+        return sail.getCoder().toResourceIteration(dao.getContextIDs())
     }
 
     override fun addStatementInternal(subj: Resource, pred: IRI, obj: Value, vararg contexts: Resource?) {
         if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
-            dao.addStatement(Coder.encode(subj)!!, Coder.encode(pred)!!, Coder.encode(obj)!!)
+            dao.addStatement(
+                sail.getCoder().encode(subj)!!,
+                sail.getCoder().encode(pred)!!,
+                sail.getCoder().encode(obj)!!
+            )
         } else {
-            dao.addStatement(Coder.encode(subj)!!, Coder.encode(pred)!!, Coder.encode(obj)!!, Coder.encode(contexts))
+            dao.addStatement(
+                sail.getCoder().encode(subj)!!,
+                sail.getCoder().encode(pred)!!,
+                sail.getCoder().encode(obj)!!,
+                sail.getCoder().encode(contexts)
+            )
         }
     }
 
@@ -80,21 +88,38 @@ class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: 
         }
 
         if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
-            dao.removeStatements(Coder.encode(subj)!!, Coder.encode(pred)!!, Coder.encode(obj)!!, listOf(null))
+            dao.removeStatements(
+                sail.getCoder().encode(subj)!!,
+                sail.getCoder().encode(pred)!!,
+                sail.getCoder().encode(obj)!!,
+                listOf(null)
+            )
         } else {
-            dao.removeStatements(Coder.encode(subj)!!, Coder.encode(pred)!!, Coder.encode(obj)!!, Coder.encode(contexts))
+            dao.removeStatements(
+                sail.getCoder().encode(subj)!!,
+                sail.getCoder().encode(pred)!!,
+                sail.getCoder().encode(obj)!!,
+                sail.getCoder().encode(contexts))
         }
     }
 
     override fun getStatementsInternal(
         subj: Resource?, pred: IRI?, obj: Value?, includeInferred: Boolean, vararg contexts: Resource?
     ): CloseableIteration<out Statement, SailException> {
-        if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
-            return Coder.toStatementIteration(
-                dao.getStatements(Coder.encode(subj), Coder.encode(pred), Coder.encode(obj), null))
+        return if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
+            sail.getCoder().toStatementIteration(dao.getStatements(
+                sail.getCoder().encode(subj),
+                sail.getCoder().encode(pred),
+                sail.getCoder().encode(obj),
+                null
+            ))
         } else {
-            return Coder.toStatementIteration(
-                dao.getStatements(Coder.encode(subj), Coder.encode(pred), Coder.encode(obj), Coder.encode(contexts)))
+            sail.getCoder().toStatementIteration(dao.getStatements(
+                sail.getCoder().encode(subj),
+                sail.getCoder().encode(pred),
+                sail.getCoder().encode(obj),
+                sail.getCoder().encode(contexts)
+            ))
         }
     }
 

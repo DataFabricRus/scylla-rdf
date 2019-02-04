@@ -1,0 +1,9 @@
+cc.datafabric.scyllardf.coder.vocabularies.RDFVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.RDFSVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.DCVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.DCTERMSVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.ORGVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.SKOSVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.XMLSCHEMAVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.ROVVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.OWLVocabulary

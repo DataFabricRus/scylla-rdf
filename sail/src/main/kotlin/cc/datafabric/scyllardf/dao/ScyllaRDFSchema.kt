@@ -1,6 +1,8 @@
 package cc.datafabric.scyllardf.dao
 
-interface ScyllaRDFSchema {
+import java.nio.ByteBuffer
+
+object ScyllaRDFSchema {
 
     enum class Table {
         S_POC,
@@ -17,13 +19,11 @@ interface ScyllaRDFSchema {
         STAT_SP,
         STAT_PO,
 
-        NS
+        NS,
+
+        CODER_KNOWN_VOCABULARIES
     }
 
-    enum class Index {
-        S_POC_INDEX_C,
-        P_OSC_INDEX_C,
-        O_SPC_INDEX_C
-    }
+    val CONTEXT_DEFAULT = ByteBuffer.wrap(byteArrayOf(0))
 
 }

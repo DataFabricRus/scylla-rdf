@@ -28,6 +28,8 @@
             <version>2.11.1</version>
         </dependency>
 
+        <!-- RDF4J -->
+
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-sail-api</artifactId>
@@ -49,6 +51,11 @@
         <dependency>
             <groupId>com.datastax.cassandra</groupId>
             <artifactId>cassandra-driver-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
         </dependency>
 
         <!-- Test -->

@@ -1,5 +1,6 @@
 package cc.datafabric.scyllardf.sail
 
+import cc.datafabric.scyllardf.coder.CoderFacade
 import cc.datafabric.scyllardf.dao.ScyllaRDFDAO
 import org.eclipse.rdf4j.model.ValueFactory
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory
@@ -15,10 +16,14 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
     }
 
     private lateinit var dao: ScyllaRDFDAO
+    private lateinit var coder: CoderFacade
 
     override fun initializeInternal() {
         try {
             dao = ScyllaRDFDAO.create(config.scyllaHosts, config.scyllaPort, config.scyllaKeyspace)
+
+            coder = CoderFacade
+            coder.initialize(dao)
         } catch (ex: Exception) {
             throw SailException(ex)
         }
@@ -43,5 +48,7 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
     }
 
 
-
+    fun getCoder(): CoderFacade {
+        return coder
+    }
 }

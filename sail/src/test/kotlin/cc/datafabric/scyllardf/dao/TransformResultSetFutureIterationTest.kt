@@ -1,14 +1,8 @@
 package cc.datafabric.scyllardf.dao
 
 import cc.datafabric.scyllardf.TestUtils.createResultSetFuture
-import com.datastax.driver.core.ResultSet
-import com.datastax.driver.core.ResultSetFuture
-import com.datastax.driver.core.Row
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import org.mockito.ArgumentMatchers.anyInt
-import org.mockito.Mockito.`when`
-import org.mockito.Mockito.mock
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
