@@ -4,6 +4,7 @@ import cc.datafabric.scyllardf.coder.impl.AbstractCoder
 import cc.datafabric.scyllardf.coder.impl.BNodeDefaultCoder
 import cc.datafabric.scyllardf.coder.impl.IRIDefaultCoder
 import cc.datafabric.scyllardf.coder.impl.IRIFromKnownVocabularyCoder
+import cc.datafabric.scyllardf.coder.impl.IRIWithFixedNamespaceCoder
 import cc.datafabric.scyllardf.coder.impl.LiteralWithLangCoder
 import cc.datafabric.scyllardf.coder.impl.LiteralDefaultCoder
 import cc.datafabric.scyllardf.coder.impl.LiteralWithPrimitiveDatatypeCoder
@@ -43,7 +44,8 @@ object CoderFacade {
                 dao.updateKnownVocabulariesDictionary(knownVocabsDict)
                 iriCoders.add(0, knownVocabsCoder)
 
-                iriCoders.add(1, IRIDefaultCoder(1))
+                iriCoders.add(1, IRIWithFixedNamespaceCoder(1))
+                iriCoders.add(2, IRIDefaultCoder(2))
 
                 /**
                  * BNode coders

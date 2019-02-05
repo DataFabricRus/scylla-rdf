@@ -32,3 +32,7 @@ cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_PTY_RLVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_REL_RELVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_QT_QTUVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_UTL_BTVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.LCC_3166_1Vocabulary
+# FIBO-RU vocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo_ru.FIBO_RUVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fts.FTSVocabulary

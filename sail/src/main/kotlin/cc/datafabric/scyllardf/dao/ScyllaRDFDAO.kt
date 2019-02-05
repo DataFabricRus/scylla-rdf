@@ -296,56 +296,52 @@ class ScyllaRDFDAO private constructor(
     }
 
     private fun createTables() {
-        val futures = mutableListOf<ResultSetFuture>()
-
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.S_POC} (" +
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.S_POC} (" +
             "subject blob, predicate blob, object blob, context blob, " +
-            "PRIMARY KEY (subject, predicate, object, context))"))
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.P_OSC} (" +
+            "PRIMARY KEY (subject, predicate, object, context))")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.P_OSC} (" +
             "predicate blob, object blob, subject blob, context blob, " +
-            "PRIMARY KEY (predicate, object, subject, context))"))
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.O_SPC} (" +
+            "PRIMARY KEY (predicate, object, subject, context))")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.O_SPC} (" +
             "object blob, subject blob, predicate blob, context blob, " +
-            "PRIMARY KEY (object, subject, predicate, context))"))
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CS_PO} (" +
+            "PRIMARY KEY (object, subject, predicate, context))")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CS_PO} (" +
             "context blob, subject blob, predicate blob, object blob, " +
-            "PRIMARY KEY ((context, subject), predicate, object))"))
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CP_OS} (" +
+            "PRIMARY KEY ((context, subject), predicate, object))")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CP_OS} (" +
             "context blob, predicate blob, object blob, subject blob, " +
-            "PRIMARY KEY ((context, predicate), object, subject))"))
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CO_SP} (" +
+            "PRIMARY KEY ((context, predicate), object, subject))")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CO_SP} (" +
             "context blob, object blob, subject blob, predicate blob, " +
-            "PRIMARY KEY ((context, object), subject, predicate))"))
+            "PRIMARY KEY ((context, object), subject, predicate))")
 
         /**
          * Tables for statistics
          */
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_C} " +
-            "(id blob PRIMARY KEY, counter counter)"))
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_S} " +
-            "(id blob PRIMARY KEY, counter counter)"))
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_P} " +
-            "(id blob PRIMARY KEY, counter counter)"))
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_O} " +
-            "(id blob PRIMARY KEY, counter counter)"))
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_SP} " +
-            "(subject blob, predicate blob, counter counter, PRIMARY KEY ((subject, predicate)))"))
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_PO} " +
-            "(predicate blob, object blob, counter counter, PRIMARY KEY ((predicate, object)))"))
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_C} " +
+            "(id blob PRIMARY KEY, counter counter)")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_S} " +
+            "(id blob PRIMARY KEY, counter counter)")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_P} " +
+            "(id blob PRIMARY KEY, counter counter)")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_O} " +
+            "(id blob PRIMARY KEY, counter counter)")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_SP} " +
+            "(subject blob, predicate blob, counter counter, PRIMARY KEY ((subject, predicate)))")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_PO} " +
+            "(predicate blob, object blob, counter counter, PRIMARY KEY ((predicate, object)))")
 
         /**
          * Table for namespaces
          */
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.NS} " +
-            "(prefix text, name text, PRIMARY KEY(prefix))"))
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.NS} " +
+            "(prefix text, name text, PRIMARY KEY(prefix))")
 
         /**
          * Table for the known vocabularies coder
          */
-        futures.add(session.executeAsync("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CODER_KNOWN_VOCABULARIES} " +
-            "(key text, value blob, PRIMARY KEY(key))"))
-
-        Futures.allAsList(futures).get()
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CODER_KNOWN_VOCABULARIES} " +
+            "(key text, value blob, PRIMARY KEY(key))")
     }
 
     private fun prepareStatements() {
