@@ -4,7 +4,7 @@ import org.eclipse.rdf4j.model.Literal
 import org.eclipse.rdf4j.rio.ntriples.NTriplesUtil
 import java.nio.ByteBuffer
 
-internal class LiteralToNTriplesStringCoder(coderId: Int) : AbstractCoder<Literal>(coderId) {
+internal class LiteralDefaultCoder(coderId: Int) : AbstractCoder<Literal>(coderId) {
     override fun encode(value: Literal?): ByteBuffer? {
         if (value == null) {
             return null

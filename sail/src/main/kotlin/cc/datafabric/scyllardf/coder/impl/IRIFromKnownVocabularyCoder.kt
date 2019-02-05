@@ -9,15 +9,15 @@ import java.nio.ByteBuffer
 import java.util.ServiceLoader
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class KnownVocabulariesCoder(coderId: Int) : AbstractCoder<IRI>(coderId) {
+internal class IRIFromKnownVocabularyCoder(coderId: Int) : AbstractCoder<IRI>(coderId) {
 
     companion object {
         private const val VALUE_HASH_BYTES = 3
 
-        private val LOG = LoggerFactory.getLogger(KnownVocabulariesCoder::class.java)
+        private val LOG = LoggerFactory.getLogger(IRIFromKnownVocabularyCoder::class.java)
     }
 
-    private val dictionary = HashBiMap.create<IRI, ByteBuffer>(33)
+    private val dictionary = HashBiMap.create<IRI, ByteBuffer>()
 
     fun initialize(loadedDictionary: Map<IRI, ByteBuffer>): Map<IRI, ByteBuffer> {
         val counter = if (!loadedDictionary.isEmpty()) {

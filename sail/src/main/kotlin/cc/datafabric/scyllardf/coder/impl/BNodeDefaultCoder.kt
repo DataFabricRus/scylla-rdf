@@ -1,22 +1,21 @@
 package cc.datafabric.scyllardf.coder.impl
 
-import org.eclipse.rdf4j.model.IRI
-import org.eclipse.rdf4j.model.impl.SimpleValueFactory
+import org.eclipse.rdf4j.model.BNode
 import java.nio.ByteBuffer
 
-internal class IRIToUTF8StringCoder(coderId: Int) : AbstractCoder<IRI>(coderId) {
+internal class BNodeDefaultCoder(coderId: Int) : AbstractCoder<BNode>(coderId) {
 
-    override fun encode(value: IRI?): ByteBuffer? {
+    override fun encode(value: BNode?): ByteBuffer? {
         if (value == null) {
             return null
         }
 
         val valueHash = value.stringValue().toByteArray(Charsets.UTF_8)
 
-        return newHash(coderId, MARKER_VALUE_TYPE_IRI, valueHash)
+        return newHash(coderId, MARKER_VALUE_TYPE_BNODE, valueHash)
     }
 
-    override fun decode(hash: ByteBuffer): IRI {
+    override fun decode(hash: ByteBuffer): BNode {
         val str = String(
             hash.array(),
             CODER_METADATA_OFFSET,
@@ -24,7 +23,6 @@ internal class IRIToUTF8StringCoder(coderId: Int) : AbstractCoder<IRI>(coderId) 
             Charsets.UTF_8
         )
 
-        return VF.createIRI(str)
+        return VF.createBNode(str)
     }
-
 }

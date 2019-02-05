@@ -9,11 +9,11 @@ import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
 import kotlin.test.assertNull
 
-class KnownVocabulariesCoderTest {
+class IRIFromKnownVocabularyCoderTest {
 
     @Test
     public fun testWithoutExistingDictionary() {
-        val coder0 = KnownVocabulariesCoder(0)
+        val coder0 = IRIFromKnownVocabularyCoder(0)
         coder0.initialize(emptyMap())
 
         var expectedHash0 = ByteBuffer.wrap(byteArrayOf(
@@ -43,7 +43,7 @@ class KnownVocabulariesCoderTest {
         assertEquals(expectedHash0, coder0.encode(RDFS.LITERAL))
         assertEquals(RDFS.LITERAL, coder0.decode(expectedHash0))
 
-        val coder2 = KnownVocabulariesCoder(2)
+        val coder2 = IRIFromKnownVocabularyCoder(2)
         coder2.initialize(emptyMap())
 
         var expectedHash1 = ByteBuffer.wrap(byteArrayOf(
@@ -76,10 +76,10 @@ class KnownVocabulariesCoderTest {
 
     @Test
     public fun testWithExistingDictionary() {
-        val coder1 = KnownVocabulariesCoder(0)
+        val coder1 = IRIFromKnownVocabularyCoder(0)
         val dictionary1 = coder1.initialize(emptyMap())
 
-        val coder2 = KnownVocabulariesCoder(0)
+        val coder2 = IRIFromKnownVocabularyCoder(0)
         val dictionary2 = coder2.initialize(dictionary1)
 
         assertEquals(dictionary1, dictionary2)
@@ -89,7 +89,7 @@ class KnownVocabulariesCoderTest {
             SimpleValueFactory.getInstance().createIRI("http://example.com/1"),
             ByteBuffer.wrap(byteArrayOf(0b00000001, 0, 0, 0b01000000))
         )
-        val coder3 = KnownVocabulariesCoder(0)
+        val coder3 = IRIFromKnownVocabularyCoder(0)
         coder3.initialize(dictionary3)
 
         val expectedHash3 = ByteBuffer.wrap(byteArrayOf(
@@ -103,7 +103,7 @@ class KnownVocabulariesCoderTest {
 
     @Test
     public fun testInexistentMapping() {
-        val coder0 = KnownVocabulariesCoder(0)
+        val coder0 = IRIFromKnownVocabularyCoder(0)
         coder0.initialize(emptyMap())
 
         assertNull(coder0.encode(SimpleValueFactory.getInstance().createIRI("http://example.com/1")))

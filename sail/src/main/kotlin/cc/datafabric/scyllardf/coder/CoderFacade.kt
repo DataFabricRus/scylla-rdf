@@ -1,11 +1,12 @@
 package cc.datafabric.scyllardf.coder
 
 import cc.datafabric.scyllardf.coder.impl.AbstractCoder
-import cc.datafabric.scyllardf.coder.impl.BNodeToUTF8StringCoder
-import cc.datafabric.scyllardf.coder.impl.IRIToUTF8StringCoder
-import cc.datafabric.scyllardf.coder.impl.KnownVocabulariesCoder
-import cc.datafabric.scyllardf.coder.impl.LangStringToNTriplesStringCoder
-import cc.datafabric.scyllardf.coder.impl.LiteralToNTriplesStringCoder
+import cc.datafabric.scyllardf.coder.impl.BNodeDefaultCoder
+import cc.datafabric.scyllardf.coder.impl.IRIDefaultCoder
+import cc.datafabric.scyllardf.coder.impl.IRIFromKnownVocabularyCoder
+import cc.datafabric.scyllardf.coder.impl.LiteralWithLangCoder
+import cc.datafabric.scyllardf.coder.impl.LiteralDefaultCoder
+import cc.datafabric.scyllardf.coder.impl.LiteralWithPrimitiveDatatypeCoder
 import cc.datafabric.scyllardf.dao.SPOCIteration
 import cc.datafabric.scyllardf.dao.ScyllaRDFDAO
 import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
@@ -19,7 +20,6 @@ import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.model.Value
 import org.eclipse.rdf4j.model.impl.SimpleNamespace
 import org.eclipse.rdf4j.model.vocabulary.RDF
-import org.eclipse.rdf4j.model.vocabulary.XMLSchema
 import org.eclipse.rdf4j.sail.SailException
 import java.nio.ByteBuffer
 
@@ -38,27 +38,28 @@ object CoderFacade {
                  * IRI coders
                  */
                 var knownVocabsDict = dao.loadKnownVocabulariesDictionary()
-                val knownVocabsCoder = KnownVocabulariesCoder(0)
+                val knownVocabsCoder = IRIFromKnownVocabularyCoder(0)
                 knownVocabsDict = knownVocabsCoder.initialize(knownVocabsDict)
                 dao.updateKnownVocabulariesDictionary(knownVocabsDict)
                 iriCoders.add(0, knownVocabsCoder)
 
-                iriCoders.add(1, IRIToUTF8StringCoder(1))
+                iriCoders.add(1, IRIDefaultCoder(1))
 
                 /**
                  * BNode coders
                  */
-                bnodeCoders.add(0, BNodeToUTF8StringCoder(0))
+                bnodeCoders.add(0, BNodeDefaultCoder(0))
 
                 /**
                  * Lang string coders
                  */
-                langStringCoders.add(0, LangStringToNTriplesStringCoder(0))
+                langStringCoders.add(0, LiteralWithLangCoder(0))
 
                 /**
                  * Typed literal coders
                  */
-                literalCoders.add(0, LiteralToNTriplesStringCoder(0))
+                literalCoders.add(0, LiteralWithPrimitiveDatatypeCoder(0))
+                literalCoders.add(1, LiteralDefaultCoder(1))
 
                 isInitialized = true
             }
@@ -133,7 +134,7 @@ object CoderFacade {
     fun encode(value: Literal): ByteBuffer {
         var hash: ByteBuffer? = null
 
-        if (value.datatype == RDF.LANGSTRING || value.datatype == XMLSchema.STRING) {
+        if (value.datatype == RDF.LANGSTRING) {
             for (coder in langStringCoders) {
                 hash = coder.encode(value)
                 if (hash != null) {

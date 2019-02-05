@@ -2,6 +2,7 @@ package cc.datafabric.scyllardf.coder.impl
 
 import cc.datafabric.scyllardf.coder.ICoder
 import org.eclipse.rdf4j.model.Value
+import org.eclipse.rdf4j.model.ValueFactory
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory
 import java.nio.ByteBuffer
 import kotlin.experimental.and
@@ -20,7 +21,7 @@ internal abstract class AbstractCoder<T : Value>(coderId: Int) : ICoder<T> {
         private const val MASK_VALUE_TYPE: Byte = 0b00000011
         private const val MASK_CODER_ID: Byte = 0b01111100
 
-        val VF = SimpleValueFactory.getInstance()
+        val VF: ValueFactory = SimpleValueFactory.getInstance()
 
         fun valueType(array: ByteBuffer): Byte {
             return array[0] and MASK_VALUE_TYPE
