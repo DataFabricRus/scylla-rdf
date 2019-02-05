@@ -1,3 +1,4 @@
+# Popular vocabularies
 cc.datafabric.scyllardf.coder.vocabularies.RDFVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.RDFSVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.DCVocabulary
@@ -7,3 +8,27 @@ cc.datafabric.scyllardf.coder.vocabularies.SKOSVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.XMLSCHEMAVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.ROVVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.OWLVocabulary
+# FIBO vocabularies
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_BE_CORP_CORPVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_BE_GE_GEVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_BE_LE_FBOVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_BE_LE_LPVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_BE_OAC_COWNVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_BE_OAC_OPTYVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_BE_SPS_SPSVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_AAP_AGTVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_AAP_PPLVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_ACC_4217Vocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_ACC_AEQVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_ACC_CURVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_ARR_DOCVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_DT_FDVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_OAC_OACVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_ORG_FMVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_PLC_ADRVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_PLC_CTYVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_PLC_LOCVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_PTY_RLVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_REL_RELVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_QT_QTUVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_FND_UTL_BTVocabulary
