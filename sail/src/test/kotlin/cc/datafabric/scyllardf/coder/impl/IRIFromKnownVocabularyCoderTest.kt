@@ -87,7 +87,7 @@ class IRIFromKnownVocabularyCoderTest {
         val dictionary3 = mutableMapOf<IRI, ByteBuffer>()
         dictionary3.put(
             SimpleValueFactory.getInstance().createIRI("http://example.com/1"),
-            ByteBuffer.wrap(byteArrayOf(0b00000001, 0, 0, 0b01000000))
+            ByteBuffer.wrap(byteArrayOf(0b00000001, 0, 0, 0b00000000))
         )
         val coder3 = IRIFromKnownVocabularyCoder(0)
         coder3.initialize(dictionary3)

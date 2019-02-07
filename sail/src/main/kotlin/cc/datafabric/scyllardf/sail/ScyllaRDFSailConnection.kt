@@ -133,7 +133,7 @@ class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: 
         }
 
         val strategy = StrictEvaluationStrategyFactory().createEvaluationStrategy(dataset, tripleSource)
-        val statistics = EvaluationStatistics()
+        val statistics = ScyllaRDFEvaluationStatistics(dao, sail.getCoder())
 
         val queryPlanner = ScyllaRDFQueryPlanner(strategy, statistics)
         queryPlanner.optimize(expr, dataset, bindings)

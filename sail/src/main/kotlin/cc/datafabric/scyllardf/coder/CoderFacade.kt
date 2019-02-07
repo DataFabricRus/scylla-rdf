@@ -24,7 +24,7 @@ import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.eclipse.rdf4j.sail.SailException
 import java.nio.ByteBuffer
 
-object CoderFacade {
+public object CoderFacade {
     private val iriCoders = mutableListOf<ICoder<IRI>>()
     private val bnodeCoders = mutableListOf<ICoder<BNode>>()
     private val langStringCoders = mutableListOf<ICoder<Literal>>()

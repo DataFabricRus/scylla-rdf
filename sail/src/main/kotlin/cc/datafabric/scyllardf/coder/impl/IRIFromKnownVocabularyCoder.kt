@@ -38,9 +38,11 @@ internal class IRIFromKnownVocabularyCoder(coderId: Int) : AbstractCoder<IRI>(co
             var numVocabs = 0
             serviceLoader.forEach { vocab ->
                 LOG.info("Refreshing [${vocab.getNamespace()}] vocabulary...")
-                vocab.getValues().forEach {
-                    if (!dictionary.containsKey(it)) {
+                vocab.getValues().forEach { it: IRI? ->
+                    if (it != null && !dictionary.containsKey(it)) {
                         registerEntry(counter, dictionary, it)
+                    } else if (it == null) {
+                        LOG.warn("Vocabulary [${vocab.getNamespace()}] has nulls...")
                     }
                 }
 
@@ -53,8 +55,12 @@ internal class IRIFromKnownVocabularyCoder(coderId: Int) : AbstractCoder<IRI>(co
             serviceLoader.forEach { vocab ->
                 LOG.info("Registering [${vocab.getNamespace()}] vocabulary...")
 
-                vocab.getValues().forEach {
-                    registerEntry(counter, dictionary, it)
+                vocab.getValues().forEach { it: IRI? ->
+                    if (it != null) {
+                        registerEntry(counter, dictionary, it)
+                    } else {
+                        LOG.warn("Vocabulary [${vocab.getNamespace()}] has nulls...")
+                    }
                 }
 
                 numVocabs++
@@ -70,6 +76,10 @@ internal class IRIFromKnownVocabularyCoder(coderId: Int) : AbstractCoder<IRI>(co
     }
 
     override fun encode(value: IRI?): ByteBuffer? {
+        if (value == null) {
+            return null
+        }
+
         return dictionary[value]
     }
 
@@ -84,7 +94,13 @@ internal class IRIFromKnownVocabularyCoder(coderId: Int) : AbstractCoder<IRI>(co
         val valueHash = ByteArray(VALUE_HASH_BYTES)
         System.arraycopy(counterHash, 1, valueHash, 0, VALUE_HASH_BYTES)
 
-        index[value] = newHash(coderId, MARKER_VALUE_TYPE_IRI, valueHash)
+        try {
+            index[value] = newHash(coderId, MARKER_VALUE_TYPE_IRI, valueHash)
+        } catch (ex: IllegalArgumentException) {
+            LOG.error("Failed to register value [${value.stringValue()}] with counter [${counter.get()}]!")
+
+            throw ex
+        }
     }
 
 }

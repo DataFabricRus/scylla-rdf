@@ -23,7 +23,7 @@ import java.util.stream.Collectors
 
 class ScyllaRDFDAO private constructor(
     private val cluster: Cluster, private val keyspace: String
-) : Closeable {
+) : ICardinalityDAO, Closeable {
 
     companion object {
         private const val MAX_BATCH_SIZE = 65536
@@ -85,12 +85,20 @@ class ScyllaRDFDAO private constructor(
     private lateinit var prepDeleteCPOS: PreparedStatement
     private lateinit var prepDeleteCOSP: PreparedStatement
 
+    private lateinit var prepSelectStatS: PreparedStatement
+    private lateinit var prepSelectStatP: PreparedStatement
+    private lateinit var prepSelectStatO: PreparedStatement
+    private lateinit var prepSelectStatSP: PreparedStatement
+    private lateinit var prepSelectStatPO: PreparedStatement
+    private lateinit var prepSelectStatSO: PreparedStatement
+
     private lateinit var prepIncrementStatC: PreparedStatement
     private lateinit var prepIncrementStatS: PreparedStatement
     private lateinit var prepIncrementStatP: PreparedStatement
     private lateinit var prepIncrementStatO: PreparedStatement
     private lateinit var prepIncrementStatSP: PreparedStatement
     private lateinit var prepIncrementStatPO: PreparedStatement
+    private lateinit var prepIncrementStatSO: PreparedStatement
 
     private lateinit var prepDecrementStatC: PreparedStatement
     private lateinit var prepDecrementStatS: PreparedStatement
@@ -98,6 +106,7 @@ class ScyllaRDFDAO private constructor(
     private lateinit var prepDecrementStatO: PreparedStatement
     private lateinit var prepDecrementStatSP: PreparedStatement
     private lateinit var prepDecrementStatPO: PreparedStatement
+    private lateinit var prepDecrementStatSO: PreparedStatement
 
     private lateinit var prepInsertKnownVocabulariesDictionary: PreparedStatement
 
@@ -137,6 +146,7 @@ class ScyllaRDFDAO private constructor(
         futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatO.bind(), obj)))
         futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatSP.bind(), subj, pred)))
         futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatPO.bind(), pred, obj)))
+        futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatSO.bind(), subj, obj)))
 
         return futures
     }
@@ -235,6 +245,7 @@ class ScyllaRDFDAO private constructor(
             futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatO.bind(), obj)))
             futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatSP.bind(), subj, pred)))
             futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatPO.bind(), pred, obj)))
+            futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatSO.bind(), pred, obj)))
         }
 
         Futures.allAsList(futures).get()
@@ -276,6 +287,38 @@ class ScyllaRDFDAO private constructor(
                 batch = mutableListOf<ResultSetFuture>()
             }
         }
+    }
+
+    override fun getCardinalityC(context: ByteBuffer?): Double {
+        return if (context == null) {
+            countTotalTriples().toDouble()
+        } else {
+            countTriplesInGraphs(listOf(context as Resource)).toDouble()
+        }
+    }
+
+    override fun getCardinalityS(subj: ByteBuffer): Double {
+        return session.execute(prepSelectStatS.bind(subj)).one().getLong(0).toDouble()
+    }
+
+    override fun getCardinalityP(pred: ByteBuffer): Double {
+        return session.execute(prepSelectStatP.bind(pred)).one().getLong(0).toDouble()
+    }
+
+    override fun getCardinalityO(obj: ByteBuffer): Double {
+        return session.execute(prepSelectStatO.bind(obj)).one().getLong(0).toDouble()
+    }
+
+    override fun getCardinalitySP(subj: ByteBuffer, pred: ByteBuffer): Double {
+        return session.execute(prepSelectStatSP.bind(subj, pred)).one().getLong(0).toDouble()
+    }
+
+    override fun getCardinalitySO(subj: ByteBuffer, obj: ByteBuffer): Double {
+        return session.execute(prepSelectStatSO.bind(subj, obj)).one().getLong(0).toDouble()
+    }
+
+    override fun getCardinalityPO(pred: ByteBuffer, obj: ByteBuffer): Double {
+        return session.execute(prepSelectStatPO.bind(pred, obj)).one().getLong(0).toDouble()
     }
 
     override fun close() {
@@ -330,6 +373,8 @@ class ScyllaRDFDAO private constructor(
             "(subject blob, predicate blob, counter counter, PRIMARY KEY ((subject, predicate)))")
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_PO} " +
             "(predicate blob, object blob, counter counter, PRIMARY KEY ((predicate, object)))")
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_SO} " +
+            "(subject blob, object blob, counter counter, PRIMARY KEY ((subject, object)))")
 
         /**
          * Table for namespaces
@@ -345,7 +390,6 @@ class ScyllaRDFDAO private constructor(
     }
 
     private fun prepareStatements() {
-        // TODO: Do it in parallel
         prepGetContextIds = session.prepare("SELECT id FROM ${ScyllaRDFSchema.Table.STAT_C}")
 
         prepGetNamespaces = session.prepare("SELECT prefix, name FROM ${ScyllaRDFSchema.Table.NS}")
@@ -437,6 +481,16 @@ class ScyllaRDFDAO private constructor(
         prepSelect_CSPO_C = session.prepare("SELECT subject, predicate, object, context " +
             "FROM ${ScyllaRDFSchema.Table.CS_PO} WHERE context = ? ALLOW FILTERING")
 
+        prepSelectStatS = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_S} WHERE id = ?")
+        prepSelectStatP = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_P} WHERE id = ?")
+        prepSelectStatO = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_O} WHERE id = ?")
+        prepSelectStatSP = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_SP} " +
+            "WHERE subject = ? AND predicate = ?")
+        prepSelectStatPO = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_PO} " +
+            "WHERE predicate = ? AND object = ?")
+        prepSelectStatSO = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_SO} " +
+            "WHERE subject = ? AND object = ?")
+
         prepIncrementStatC = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_C} " +
             "SET counter = counter + 1 WHERE id = ?")
         prepIncrementStatS = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_S} " +
@@ -449,6 +503,8 @@ class ScyllaRDFDAO private constructor(
             "SET counter = counter + 1 WHERE subject = ? AND predicate = ?")
         prepIncrementStatPO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_PO} " +
             "SET counter = counter + 1 WHERE predicate = ? AND object = ?")
+        prepIncrementStatSO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SO} " +
+            "SET counter = counter + 1 WHERE subject = ? AND object = ?")
 
         prepDecrementStatC = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_C} " +
             "SET counter = counter - 1 WHERE id = ?")
@@ -462,6 +518,8 @@ class ScyllaRDFDAO private constructor(
             "SET counter = counter - 1 WHERE subject = ? AND predicate = ?")
         prepDecrementStatPO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_PO} " +
             "SET counter = counter - 1 WHERE predicate = ? AND object = ?")
+        prepDecrementStatSO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SO} " +
+            "SET counter = counter - 1 WHERE subject = ? AND object = ?")
 
         prepInsertKnownVocabulariesDictionary = session.prepare(
             "INSERT INTO ${ScyllaRDFSchema.Table.CODER_KNOWN_VOCABULARIES} (key, value) VALUES (?, ?)")

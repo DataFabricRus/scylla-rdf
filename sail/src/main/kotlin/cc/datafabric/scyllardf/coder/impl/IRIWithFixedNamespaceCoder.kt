@@ -15,6 +15,7 @@ internal class IRIWithFixedNamespaceCoder(coderId: Int) : AbstractCoder<IRI>(cod
             "urn:datafabric:org:",
             "urn:datafabric:value:",
             "urn:datafabric:version:",
+            "urn:uuid:",
 
             "http://example.com/version/",
             "http://example.com/details/",
@@ -39,7 +40,9 @@ internal class IRIWithFixedNamespaceCoder(coderId: Int) : AbstractCoder<IRI>(cod
             "http://example.com/ieType/",
             "http://example.com/IeRecord/",
             "http://example.com/gender/",
-            "http://example.com/taxauthority/"
+            "http://example.com/taxauthority/",
+
+            "http://db.uwaterloo.ca/~galuc/wsdbm/"
         ).forEachIndexed { namespaceId, iri ->
             registerEntry(namespaceId.toByte(), dictionary, iri)
         }

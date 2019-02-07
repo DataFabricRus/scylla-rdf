@@ -18,6 +18,7 @@ object ScyllaRDFSchema {
         STAT_O,
         STAT_SP,
         STAT_PO,
+        STAT_SO,
 
         NS,
 

@@ -8,6 +8,13 @@ cc.datafabric.scyllardf.coder.vocabularies.SKOSVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.XMLSCHEMAVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.ROVVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.OWLVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.SchemaOrgVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.FOAFVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.GoodRelationsVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.GeoNamesVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.MusicVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.OpenGraphVocabulary
+cc.datafabric.scyllardf.coder.vocabularies.ReviewVocabulary
 # FIBO vocabularies
 cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_BE_CORP_CORPVocabulary
 cc.datafabric.scyllardf.coder.vocabularies.fibo.FIBO_BE_GE_GEVocabulary
