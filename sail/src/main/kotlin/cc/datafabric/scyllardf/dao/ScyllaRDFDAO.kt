@@ -38,7 +38,7 @@ class ScyllaRDFDAO private constructor(
                 .addContactPoints(hosts)
                 .withPort(port)
                 .withLoadBalancingPolicy(RoundRobinPolicy())
-                .withQueryOptions(QueryOptions().setConsistencyLevel(ConsistencyLevel.ANY))
+                .withQueryOptions(QueryOptions().setConsistencyLevel(ConsistencyLevel.ONE))
                 .build()
 
             val dao = ScyllaRDFDAO(cluster, keyspace)

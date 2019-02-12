@@ -5,12 +5,15 @@ import cc.datafabric.scyllardf.coder.impl.BNodeDefaultCoder
 import cc.datafabric.scyllardf.coder.impl.IRIDefaultCoder
 import cc.datafabric.scyllardf.coder.impl.IRIFromKnownVocabularyCoder
 import cc.datafabric.scyllardf.coder.impl.IRIWithFixedNamespaceCoder
-import cc.datafabric.scyllardf.coder.impl.LiteralWithLangCoder
 import cc.datafabric.scyllardf.coder.impl.LiteralDefaultCoder
+import cc.datafabric.scyllardf.coder.impl.LiteralWithLangCoder
 import cc.datafabric.scyllardf.coder.impl.LiteralWithPrimitiveDatatypeCoder
 import cc.datafabric.scyllardf.dao.SPOCIteration
 import cc.datafabric.scyllardf.dao.ScyllaRDFDAO
 import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
+import cc.datafabric.scyllardf.model.impl.EncodedBNode
+import cc.datafabric.scyllardf.model.impl.EncodedIRI
+import cc.datafabric.scyllardf.model.impl.EncodedLiteral
 import org.eclipse.rdf4j.common.iteration.CloseableIteration
 import org.eclipse.rdf4j.model.BNode
 import org.eclipse.rdf4j.model.IRI
@@ -24,7 +27,7 @@ import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.eclipse.rdf4j.sail.SailException
 import java.nio.ByteBuffer
 
-public object CoderFacade {
+public object CoderFacade : ICoderFacade {
     private val iriCoders = mutableListOf<ICoder<IRI>>()
     private val bnodeCoders = mutableListOf<ICoder<BNode>>()
     private val langStringCoders = mutableListOf<ICoder<Literal>>()
@@ -68,7 +71,7 @@ public object CoderFacade {
         }
     }
 
-    fun encode(values: Array<out Resource?>): List<ByteBuffer?> {
+    override fun encode(values: Array<out Resource?>): List<ByteBuffer?> {
         return values.map {
             if (it != null) {
                 encode(it)
@@ -78,7 +81,7 @@ public object CoderFacade {
         }
     }
 
-    fun encode(value: Resource?): ByteBuffer? {
+    override fun encode(value: Resource?): ByteBuffer? {
         if (value == null) {
             return null
         }
@@ -92,7 +95,7 @@ public object CoderFacade {
         throw IllegalArgumentException("Unsupported RDF resource type!")
     }
 
-    fun encode(value: Value?): ByteBuffer? {
+    override fun encode(value: Value?): ByteBuffer? {
         if (value == null) {
             return null
         }
@@ -105,7 +108,7 @@ public object CoderFacade {
         }
     }
 
-    fun encode(value: IRI?): ByteBuffer? {
+    override fun encode(value: IRI?): ByteBuffer? {
         if (value == null) {
             return null
         }
@@ -121,7 +124,7 @@ public object CoderFacade {
         return hash!!
     }
 
-    fun encode(value: BNode): ByteBuffer {
+    override fun encode(value: BNode): ByteBuffer {
         var hash: ByteBuffer? = null
         for (coder in bnodeCoders) {
             hash = coder.encode(value)
@@ -133,7 +136,7 @@ public object CoderFacade {
         return hash!!
     }
 
-    fun encode(value: Literal): ByteBuffer {
+    override fun encode(value: Literal): ByteBuffer {
         var hash: ByteBuffer? = null
 
         if (value.datatype == RDF.LANGSTRING) {
@@ -155,7 +158,7 @@ public object CoderFacade {
         return hash!!
     }
 
-    fun encode(stmt: Statement): Array<ByteBuffer> {
+    override fun encode(stmt: Statement): Array<ByteBuffer> {
         val subj = encode(stmt.subject)!!
         val pred = encode(stmt.predicate)!!
         val obj = encode(stmt.`object`)!!
@@ -168,20 +171,20 @@ public object CoderFacade {
         return arrayOf(subj, pred, obj, c)
     }
 
-    fun decode(hash: ByteBuffer): Value {
+    override fun decode(hash: ByteBuffer): Value {
         val valueType = AbstractCoder.valueType(hash)
         val coderId = AbstractCoder.coderId(hash)
 
         return when (valueType) {
-            AbstractCoder.MARKER_VALUE_TYPE_IRI -> iriCoders[coderId].decode(hash)
-            AbstractCoder.MARKER_VALUE_TYPE_BNODE -> bnodeCoders[coderId].decode(hash)
-            AbstractCoder.MARKER_VALUE_TYPE_LANG_STRING -> langStringCoders[coderId].decode(hash)
-            AbstractCoder.MARKER_VALUE_TYPE_LITERAL -> literalCoders[coderId].decode(hash)
+            AbstractCoder.MARKER_VALUE_TYPE_IRI -> EncodedIRI(iriCoders[coderId], hash)
+            AbstractCoder.MARKER_VALUE_TYPE_BNODE -> EncodedBNode(bnodeCoders[coderId], hash)
+            AbstractCoder.MARKER_VALUE_TYPE_LANG_STRING -> EncodedLiteral(langStringCoders[coderId], hash)
+            AbstractCoder.MARKER_VALUE_TYPE_LITERAL -> EncodedLiteral(literalCoders[coderId], hash)
             else -> throw IllegalArgumentException("Could find the suitable coder!")
         }
     }
 
-    fun decode(spoc: Array<ByteBuffer>): Statement {
+    override fun decode(spoc: Array<ByteBuffer>): Statement {
         return if (spoc[3] == ScyllaRDFSchema.CONTEXT_DEFAULT) {
             AbstractCoder.VF.createStatement(
                 decode(spoc[0]) as Resource,
@@ -198,7 +201,7 @@ public object CoderFacade {
         }
     }
 
-    fun toStatementIteration(origin: SPOCIteration): CloseableIteration<Statement, SailException> {
+    override fun toStatementIteration(origin: SPOCIteration): CloseableIteration<Statement, SailException> {
         return object : CloseableIteration<Statement, SailException> {
             override fun next(): Statement {
                 return decode(origin.next())
@@ -219,7 +222,7 @@ public object CoderFacade {
         }
     }
 
-    fun toResourceIteration(origin: CloseableIteration<ByteBuffer, SailException>)
+    override fun toResourceIteration(origin: CloseableIteration<ByteBuffer, SailException>)
         : CloseableIteration<out Resource, SailException> {
         return object : CloseableIteration<Resource, SailException> {
             override fun next(): Resource {
@@ -240,7 +243,7 @@ public object CoderFacade {
         }
     }
 
-    fun toNamespaceIteration(origin: CloseableIteration<Array<String>, SailException>)
+    override fun toNamespaceIteration(origin: CloseableIteration<Array<String>, SailException>)
         : CloseableIteration<Namespace, SailException> {
         return object : CloseableIteration<Namespace, SailException> {
             override fun next(): Namespace {

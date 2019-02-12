@@ -1,6 +1,7 @@
 package cc.datafabric.scyllardf.sail
 
 import cc.datafabric.scyllardf.coder.CoderFacade
+import cc.datafabric.scyllardf.coder.ICoderFacade
 import cc.datafabric.scyllardf.dao.ScyllaRDFDAO
 import org.eclipse.rdf4j.model.ValueFactory
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory
@@ -30,7 +31,7 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
     }
 
     override fun getConnectionInternal(): NotifyingSailConnection {
-        LOG.debug("getConnectionInternal");
+        LOG.debug("getConnectionInternal")
         return ScyllaRDFSailConnection(this, dao)
     }
 
@@ -48,7 +49,7 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
     }
 
 
-    fun getCoder(): CoderFacade {
+    fun getCoder(): ICoderFacade {
         return coder
     }
 }
