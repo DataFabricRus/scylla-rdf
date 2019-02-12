@@ -60,7 +60,7 @@ class ScyllaRDFSailConfig : AbstractSailImplConfig() {
             Models.getPropertyString(m, implNode, SCYLLA_HOSTS)
                 .orElseThrow { SailConfigException("Scylla Hosts is required!") }
                 .split(",")
-                .map { InetAddress.getByName(it) }
+                .map { InetAddress.getByName(it.trim()) }
                 .toCollection(scyllaHosts)
             scyllaPort = Models.getPropertyLiteral(m, implNode, SCYLLA_PORT)
                 .orElseThrow { SailConfigException("Scylla Port is required!") }

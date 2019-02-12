@@ -2,7 +2,9 @@ package cc.datafabric.scyllardf.dao
 
 import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.Cluster
+import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.driver.core.PreparedStatement
+import com.datastax.driver.core.QueryOptions
 import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.ResultSetFuture
 import com.datastax.driver.core.Session
@@ -36,6 +38,7 @@ class ScyllaRDFDAO private constructor(
                 .addContactPoints(hosts)
                 .withPort(port)
                 .withLoadBalancingPolicy(RoundRobinPolicy())
+                .withQueryOptions(QueryOptions().setConsistencyLevel(ConsistencyLevel.ANY))
                 .build()
 
             val dao = ScyllaRDFDAO(cluster, keyspace)
@@ -100,6 +103,14 @@ class ScyllaRDFDAO private constructor(
     private lateinit var prepIncrementStatPO: PreparedStatement
     private lateinit var prepIncrementStatSO: PreparedStatement
 
+    private lateinit var prepIncrementStatCBy: PreparedStatement
+    private lateinit var prepIncrementStatSBy: PreparedStatement
+    private lateinit var prepIncrementStatPBy: PreparedStatement
+    private lateinit var prepIncrementStatOBy: PreparedStatement
+    private lateinit var prepIncrementStatSPBy: PreparedStatement
+    private lateinit var prepIncrementStatPOBy: PreparedStatement
+    private lateinit var prepIncrementStatSOBy: PreparedStatement
+
     private lateinit var prepDecrementStatC: PreparedStatement
     private lateinit var prepDecrementStatS: PreparedStatement
     private lateinit var prepDecrementStatP: PreparedStatement
@@ -134,6 +145,58 @@ class ScyllaRDFDAO private constructor(
 
     fun insertInCOSP(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
         return session.executeAsync(setBytesUnsafe(prepInsertCOSP.bind(), context, obj, subj, pred))
+    }
+
+    fun incrementStatCBy(context: ByteBuffer, add: Long): ResultSetFuture {
+        return session.executeAsync(prepIncrementStatCBy.bind()
+            .setLong(0, add)
+            .setBytesUnsafe(1, context)
+        )
+    }
+
+    fun incrementStatSBy(subj: ByteBuffer, add: Long): ResultSetFuture {
+        return session.executeAsync(prepIncrementStatSBy.bind()
+            .setLong(0, add)
+            .setBytesUnsafe(1, subj)
+        )
+    }
+
+    fun incrementStatPBy(pred: ByteBuffer, add: Long): ResultSetFuture {
+        return session.executeAsync(prepIncrementStatPBy.bind()
+            .setLong(0, add)
+            .setBytesUnsafe(1, pred)
+        )
+    }
+
+    fun incrementStatOBy(obj: ByteBuffer, add: Long): ResultSetFuture {
+        return session.executeAsync(prepIncrementStatOBy.bind()
+            .setLong(0, add)
+            .setBytesUnsafe(1, obj)
+        )
+    }
+
+    fun incrementStatSPBy(subj: ByteBuffer, pred: ByteBuffer, add: Long): ResultSetFuture {
+        return session.executeAsync(prepIncrementStatSPBy.bind()
+            .setLong(0, add)
+            .setBytesUnsafe(1, subj)
+            .setBytesUnsafe(2, pred)
+        )
+    }
+
+    fun incrementStatPOBy(pred: ByteBuffer, obj: ByteBuffer, add: Long): ResultSetFuture {
+        return session.executeAsync(prepIncrementStatPOBy.bind()
+            .setLong(0, add)
+            .setBytesUnsafe(1, pred)
+            .setBytesUnsafe(2, obj)
+        )
+    }
+
+    fun incrementStatSOBy(subj: ByteBuffer, obj: ByteBuffer, add: Long): ResultSetFuture {
+        return session.executeAsync(prepIncrementStatSOBy.bind()
+            .setLong(0, add)
+            .setBytesUnsafe(1, subj)
+            .setBytesUnsafe(2, obj)
+        )
     }
 
     fun incrementStatistics(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer)
@@ -505,6 +568,21 @@ class ScyllaRDFDAO private constructor(
             "SET counter = counter + 1 WHERE predicate = ? AND object = ?")
         prepIncrementStatSO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SO} " +
             "SET counter = counter + 1 WHERE subject = ? AND object = ?")
+
+        prepIncrementStatCBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_C} " +
+            "SET counter = counter + ? WHERE id = ?")
+        prepIncrementStatSBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_S} " +
+            "SET counter = counter + ? WHERE id = ?")
+        prepIncrementStatPBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_P} " +
+            "SET counter = counter + ? WHERE id = ?")
+        prepIncrementStatOBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_O} " +
+            "SET counter = counter + ? WHERE id = ?")
+        prepIncrementStatSPBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SP} " +
+            "SET counter = counter + ? WHERE subject = ? AND predicate = ?")
+        prepIncrementStatPOBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_PO} " +
+            "SET counter = counter + ? WHERE predicate = ? AND object = ?")
+        prepIncrementStatSOBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SO} " +
+            "SET counter = counter + ? WHERE subject = ? AND object = ?")
 
         prepDecrementStatC = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_C} " +
             "SET counter = counter - 1 WHERE id = ?")
