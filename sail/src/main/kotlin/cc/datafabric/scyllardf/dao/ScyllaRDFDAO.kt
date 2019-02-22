@@ -3,6 +3,8 @@ package cc.datafabric.scyllardf.dao
 import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.ConsistencyLevel
+import com.datastax.driver.core.HostDistance
+import com.datastax.driver.core.PoolingOptions
 import com.datastax.driver.core.PreparedStatement
 import com.datastax.driver.core.QueryOptions
 import com.datastax.driver.core.ResultSet
@@ -10,6 +12,7 @@ import com.datastax.driver.core.ResultSetFuture
 import com.datastax.driver.core.Session
 import com.datastax.driver.core.policies.RoundRobinPolicy
 import com.google.common.collect.Iterables
+import com.google.common.primitives.Bytes
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import org.eclipse.rdf4j.common.iteration.CloseableIteration
@@ -39,6 +42,29 @@ class ScyllaRDFDAO private constructor(
                 .withPort(port)
                 .withLoadBalancingPolicy(RoundRobinPolicy())
                 .withQueryOptions(QueryOptions().setConsistencyLevel(ConsistencyLevel.ONE))
+                .withPoolingOptions(PoolingOptions()
+                    .setMaxRequestsPerConnection(HostDistance.LOCAL, 1024)
+                    .setMaxRequestsPerConnection(HostDistance.REMOTE, 256)
+                )
+                .build()
+
+            val dao = ScyllaRDFDAO(cluster, keyspace)
+            dao.init()
+
+            return dao
+        }
+
+        fun create(
+            hosts: List<InetAddress>,
+            port: Int, keyspace: String,
+            poolingOptions: PoolingOptions
+        ): ScyllaRDFDAO {
+            val cluster = Cluster.builder()
+                .addContactPoints(hosts)
+                .withPort(port)
+                .withLoadBalancingPolicy(RoundRobinPolicy())
+                .withQueryOptions(QueryOptions().setConsistencyLevel(ConsistencyLevel.ONE))
+                .withPoolingOptions(poolingOptions)
                 .build()
 
             val dao = ScyllaRDFDAO(cluster, keyspace)
@@ -175,27 +201,24 @@ class ScyllaRDFDAO private constructor(
         )
     }
 
-    fun incrementStatSPBy(subj: ByteBuffer, pred: ByteBuffer, add: Long): ResultSetFuture {
+    fun incrementStatSPBy(id: ByteBuffer, add: Long): ResultSetFuture {
         return session.executeAsync(prepIncrementStatSPBy.bind()
             .setLong(0, add)
-            .setBytesUnsafe(1, subj)
-            .setBytesUnsafe(2, pred)
+            .setBytesUnsafe(1, id)
         )
     }
 
-    fun incrementStatPOBy(pred: ByteBuffer, obj: ByteBuffer, add: Long): ResultSetFuture {
+    fun incrementStatPOBy(id: ByteBuffer, add: Long): ResultSetFuture {
         return session.executeAsync(prepIncrementStatPOBy.bind()
             .setLong(0, add)
-            .setBytesUnsafe(1, pred)
-            .setBytesUnsafe(2, obj)
+            .setBytesUnsafe(1, id)
         )
     }
 
-    fun incrementStatSOBy(subj: ByteBuffer, obj: ByteBuffer, add: Long): ResultSetFuture {
+    fun incrementStatSOBy(id: ByteBuffer, add: Long): ResultSetFuture {
         return session.executeAsync(prepIncrementStatSOBy.bind()
             .setLong(0, add)
-            .setBytesUnsafe(1, subj)
-            .setBytesUnsafe(2, obj)
+            .setBytesUnsafe(1, id)
         )
     }
 
@@ -203,13 +226,17 @@ class ScyllaRDFDAO private constructor(
         : List<ResultSetFuture> {
         val futures = ArrayList<ResultSetFuture>(6)
 
+        val sp = ByteBuffer.wrap(Bytes.concat(subj.array(), pred.array()))
+        val po = ByteBuffer.wrap(Bytes.concat(pred.array(), obj.array()))
+        val so = ByteBuffer.wrap(Bytes.concat(subj.array(), obj.array()))
+
         futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatC.bind(), context)))
         futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatS.bind(), subj)))
         futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatP.bind(), pred)))
         futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatO.bind(), obj)))
-        futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatSP.bind(), subj, pred)))
-        futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatPO.bind(), pred, obj)))
-        futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatSO.bind(), subj, obj)))
+        futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatSP.bind(), sp)))
+        futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatPO.bind(), po)))
+        futures.add(session.executeAsync(setBytesUnsafe(prepIncrementStatSO.bind(), so)))
 
         return futures
     }
@@ -373,15 +400,30 @@ class ScyllaRDFDAO private constructor(
     }
 
     override fun getCardinalitySP(subj: ByteBuffer, pred: ByteBuffer): Double {
-        return session.execute(prepSelectStatSP.bind(subj, pred)).one().getLong(0).toDouble()
+        val id = ByteBuffer.wrap(Bytes.concat(subj.array(), pred.array()))
+
+        return session.execute(prepSelectStatSP.bind(id))
+            .one()
+            .getLong(0)
+            .toDouble()
     }
 
     override fun getCardinalitySO(subj: ByteBuffer, obj: ByteBuffer): Double {
-        return session.execute(prepSelectStatSO.bind(subj, obj)).one().getLong(0).toDouble()
+        val id = ByteBuffer.wrap(Bytes.concat(subj.array(), obj.array()))
+
+        return session.execute(prepSelectStatSO.bind(id))
+            .one()
+            .getLong(0)
+            .toDouble()
     }
 
     override fun getCardinalityPO(pred: ByteBuffer, obj: ByteBuffer): Double {
-        return session.execute(prepSelectStatPO.bind(pred, obj)).one().getLong(0).toDouble()
+        val id = ByteBuffer.wrap(Bytes.concat(pred.array(), obj.array()))
+
+        return session.execute(prepSelectStatPO.bind(id))
+            .one()
+            .getLong(0)
+            .toDouble()
     }
 
     override fun close() {
@@ -433,11 +475,11 @@ class ScyllaRDFDAO private constructor(
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_O} " +
             "(id blob PRIMARY KEY, counter counter)")
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_SP} " +
-            "(subject blob, predicate blob, counter counter, PRIMARY KEY ((subject, predicate)))")
+            "(id blob PRIMARY KEY, counter counter)")
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_PO} " +
-            "(predicate blob, object blob, counter counter, PRIMARY KEY ((predicate, object)))")
+            "(id blob PRIMARY KEY, counter counter)")
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.STAT_SO} " +
-            "(subject blob, object blob, counter counter, PRIMARY KEY ((subject, object)))")
+            "(id blob PRIMARY KEY, counter counter)")
 
         /**
          * Table for namespaces
@@ -547,12 +589,9 @@ class ScyllaRDFDAO private constructor(
         prepSelectStatS = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_S} WHERE id = ?")
         prepSelectStatP = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_P} WHERE id = ?")
         prepSelectStatO = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_O} WHERE id = ?")
-        prepSelectStatSP = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_SP} " +
-            "WHERE subject = ? AND predicate = ?")
-        prepSelectStatPO = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_PO} " +
-            "WHERE predicate = ? AND object = ?")
-        prepSelectStatSO = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_SO} " +
-            "WHERE subject = ? AND object = ?")
+        prepSelectStatSP = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_SP} WHERE id = ?")
+        prepSelectStatPO = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_PO} WHERE id = ?")
+        prepSelectStatSO = session.prepare("SELECT counter FROM ${ScyllaRDFSchema.Table.STAT_SO} WHERE id = ?")
 
         prepIncrementStatC = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_C} " +
             "SET counter = counter + 1 WHERE id = ?")
@@ -563,11 +602,11 @@ class ScyllaRDFDAO private constructor(
         prepIncrementStatO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_O} " +
             "SET counter = counter + 1 WHERE id = ?")
         prepIncrementStatSP = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SP} " +
-            "SET counter = counter + 1 WHERE subject = ? AND predicate = ?")
+            "SET counter = counter + 1 WHERE id = ?")
         prepIncrementStatPO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_PO} " +
-            "SET counter = counter + 1 WHERE predicate = ? AND object = ?")
+            "SET counter = counter + 1 WHERE id = ?")
         prepIncrementStatSO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SO} " +
-            "SET counter = counter + 1 WHERE subject = ? AND object = ?")
+            "SET counter = counter + 1 WHERE id = ?")
 
         prepIncrementStatCBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_C} " +
             "SET counter = counter + ? WHERE id = ?")
@@ -578,11 +617,11 @@ class ScyllaRDFDAO private constructor(
         prepIncrementStatOBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_O} " +
             "SET counter = counter + ? WHERE id = ?")
         prepIncrementStatSPBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SP} " +
-            "SET counter = counter + ? WHERE subject = ? AND predicate = ?")
+            "SET counter = counter + ? WHERE id = ?")
         prepIncrementStatPOBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_PO} " +
-            "SET counter = counter + ? WHERE predicate = ? AND object = ?")
+            "SET counter = counter + ? WHERE id = ?")
         prepIncrementStatSOBy = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SO} " +
-            "SET counter = counter + ? WHERE subject = ? AND object = ?")
+            "SET counter = counter + ? WHERE id = ?")
 
         prepDecrementStatC = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_C} " +
             "SET counter = counter - 1 WHERE id = ?")
@@ -593,11 +632,11 @@ class ScyllaRDFDAO private constructor(
         prepDecrementStatO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_O} " +
             "SET counter = counter - 1 WHERE id = ?")
         prepDecrementStatSP = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SP} " +
-            "SET counter = counter - 1 WHERE subject = ? AND predicate = ?")
+            "SET counter = counter - 1 WHERE id = ?")
         prepDecrementStatPO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_PO} " +
-            "SET counter = counter - 1 WHERE predicate = ? AND object = ?")
+            "SET counter = counter - 1 WHERE id = ?")
         prepDecrementStatSO = session.prepare("UPDATE ${ScyllaRDFSchema.Table.STAT_SO} " +
-            "SET counter = counter - 1 WHERE subject = ? AND object = ?")
+            "SET counter = counter - 1 WHERE id = ?")
 
         prepInsertKnownVocabulariesDictionary = session.prepare(
             "INSERT INTO ${ScyllaRDFSchema.Table.CODER_KNOWN_VOCABULARIES} (key, value) VALUES (?, ?)")

@@ -25,6 +25,6 @@ object ScyllaRDFSchema {
         CODER_KNOWN_VOCABULARIES
     }
 
-    val CONTEXT_DEFAULT = ByteBuffer.wrap(byteArrayOf(0))
+    val CONTEXT_DEFAULT = ByteBuffer.wrap(byteArrayOf(0))!!
 
 }
