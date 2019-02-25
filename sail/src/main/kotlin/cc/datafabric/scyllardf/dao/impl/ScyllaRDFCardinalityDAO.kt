@@ -5,10 +5,18 @@ import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
 import com.datastax.driver.core.PreparedStatement
 import com.datastax.driver.core.ResultSetFuture
 import com.datastax.driver.core.Session
+import com.google.common.base.Function
+import com.google.common.cache.CacheBuilder
+import com.google.common.cache.CacheLoader
 import com.google.common.hash.HashCode
 import com.google.common.hash.Hashing
+import com.google.common.primitives.Bytes
 import java.nio.ByteBuffer
+import java.time.Duration
 
+/**
+ * @see <a href="https://github.com/DataFabricRus/scylla-rdf/issues/1">ISSUE-1</a>
+ */
 internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractScyllaRDFDAO(), ICardinalityDAO {
 
     private lateinit var prepQueryCardC: PreparedStatement
@@ -60,11 +68,8 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
             "SET counter = counter - ? WHERE predicate = ? AND bucket = ?")
     }
 
-    /**
-     * TODO
-     */
     override fun withCache(): ICardinalityDAO {
-        return this
+        return CachedCardinalityDAO(this)
     }
 
     override fun numTriples(): Long {
@@ -199,5 +204,96 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
 
     private fun objectToBucketNumber(obj: ByteBuffer): Int {
         return Hashing.consistentHash(HashCode.fromInt(obj.hashCode()), ScyllaRDFSchema.CARD_PO_NUM_BUCKETS)
+    }
+
+    private class CachedCardinalityDAO(private val wrapped: ScyllaRDFCardinalityDAO) : ICardinalityDAO {
+
+        companion object {
+            private const val SCYLLA_ESTIMATOR_CARD_S = 0
+            private const val SCYLLA_ESTIMATOR_CARD_O = 1
+            private const val INDEX_NUM_TRIPLES = 2
+        }
+
+        private val nonEvictingCache = CacheBuilder
+            .newBuilder()
+            .initialCapacity(3)
+            .refreshAfterWrite(Duration.ofSeconds(60))
+            .build<Int, Long>(CacheLoader.from(scyllaEstimatesCacheLoader()))
+        private val evictingCache = CacheBuilder
+            .newBuilder()
+            .maximumSize(1000)
+            .expireAfterAccess(Duration.ofSeconds(5 * 60))
+            .build<ByteBuffer, Long>()
+
+        override fun withCache(): ICardinalityDAO {
+            throw IllegalStateException("Can't create the cached version of cached version!")
+        }
+
+        override fun numTriples(): Long {
+            return nonEvictingCache.get(INDEX_NUM_TRIPLES)
+        }
+
+        override fun contextCardinality(context: ByteBuffer?): Long {
+            return evictingCache.get(context ?: ScyllaRDFSchema.CONTEXT_DEFAULT) {
+                wrapped.contextCardinality(context)
+            }
+        }
+
+        override fun subjectCardinality(subj: ByteBuffer): Long {
+            return nonEvictingCache.get(SCYLLA_ESTIMATOR_CARD_S)
+        }
+
+        override fun predicateCardinality(pred: ByteBuffer): Long {
+            return evictingCache.get(pred) { wrapped.predicateCardinality(pred) }
+        }
+
+        override fun objectCardinality(obj: ByteBuffer): Long {
+            return nonEvictingCache.get(SCYLLA_ESTIMATOR_CARD_O)
+        }
+
+        override fun objectAndPredicateCardinality(pred: ByteBuffer, obj: ByteBuffer): Long {
+            return evictingCache.get(ByteBuffer.wrap(Bytes.concat(pred.array(), obj.array()))) {
+                wrapped.objectAndPredicateCardinality(pred, obj)
+            }
+        }
+
+        override fun incrementCardC(context: ByteBuffer, add: Long): ResultSetFuture {
+            return wrapped.incrementCardC(context, add)
+        }
+
+        override fun incrementCardP(pred: ByteBuffer, add: Long): ResultSetFuture {
+            return wrapped.incrementCardP(pred, add)
+        }
+
+        override fun incrementCardPO(pred: ByteBuffer, obj: ByteBuffer, add: Long): ResultSetFuture {
+            return wrapped.incrementCardPO(pred, obj, add)
+        }
+
+        override fun incrementCards(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?): List<ResultSetFuture> {
+            return wrapped.incrementCards(subj, pred, obj, context)
+        }
+
+        override fun incrementCards(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>): List<ResultSetFuture> {
+            return wrapped.incrementCards(subj, pred, obj, contexts)
+        }
+
+        override fun decrementCards(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?): List<ResultSetFuture> {
+            return wrapped.decrementCards(subj, pred, obj, context)
+        }
+
+        override fun decrementCards(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>): List<ResultSetFuture> {
+            return wrapped.decrementCards(subj, pred, obj, contexts)
+        }
+
+        private fun scyllaEstimatesCacheLoader(): Function<Int, Long> {
+            return Function {
+                when (it) {
+                    SCYLLA_ESTIMATOR_CARD_S -> wrapped.subjectCardinality(ByteBuffer.allocate(0))
+                    SCYLLA_ESTIMATOR_CARD_O -> wrapped.objectCardinality(ByteBuffer.allocate(0))
+                    INDEX_NUM_TRIPLES -> wrapped.numTriples()
+                    else -> throw IllegalArgumentException()
+                }
+            }
+        }
     }
 }
