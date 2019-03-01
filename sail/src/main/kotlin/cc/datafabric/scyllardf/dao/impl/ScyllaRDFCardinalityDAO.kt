@@ -13,6 +13,7 @@ import com.google.common.hash.Hashing
 import com.google.common.primitives.Bytes
 import java.nio.ByteBuffer
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 
 /**
  * @see <a href="https://github.com/DataFabricRus/scylla-rdf/issues/1">ISSUE-1</a>
@@ -217,12 +218,12 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
         private val nonEvictingCache = CacheBuilder
             .newBuilder()
             .initialCapacity(3)
-            .refreshAfterWrite(Duration.ofSeconds(60))
+            .refreshAfterWrite(60, TimeUnit.SECONDS)
             .build<Int, Long>(CacheLoader.from(scyllaEstimatesCacheLoader()))
         private val evictingCache = CacheBuilder
             .newBuilder()
             .maximumSize(1000)
-            .expireAfterAccess(Duration.ofSeconds(5 * 60))
+            .expireAfterAccess(5, TimeUnit.MINUTES)
             .build<ByteBuffer, Long>()
 
         override fun withCache(): ICardinalityDAO {
