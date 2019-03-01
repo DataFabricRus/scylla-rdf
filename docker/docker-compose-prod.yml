@@ -1,0 +1,10 @@
+version: "3"
+services:
+  scylla-rdf:
+    image: datafabricrus/scylla-rdf:0.0.1
+    restart: always
+    volumes:
+      - "./rdf4j-conf:/root/.RDF4J"
+    ports:
+      - "80:80"
+

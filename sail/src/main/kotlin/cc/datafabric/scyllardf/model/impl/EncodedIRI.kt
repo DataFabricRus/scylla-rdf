@@ -61,4 +61,10 @@ internal class EncodedIRI constructor(
         return hash.hashCode()
     }
 
+    override fun toString(): String {
+        decodeIfNeeded()
+
+        return decodedIRI!!.toString()
+    }
+
 }
