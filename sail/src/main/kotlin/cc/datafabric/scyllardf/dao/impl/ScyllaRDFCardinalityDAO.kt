@@ -12,7 +12,6 @@ import com.google.common.hash.HashCode
 import com.google.common.hash.Hashing
 import com.google.common.primitives.Bytes
 import java.nio.ByteBuffer
-import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 /**
@@ -83,9 +82,9 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
     override fun contextCardinality(context: ByteBuffer?): Long {
         val c = context ?: ScyllaRDFSchema.CONTEXT_DEFAULT
 
-        return session.execute(prepQueryCardC.bind(c))
-            .one()
-            .getLong(0)
+        val row = session.execute(prepQueryCardC.bind(c)).one()
+
+        return row?.getLong(0) ?: 0L
     }
 
     override fun subjectCardinality(subj: ByteBuffer): Long {
@@ -95,7 +94,9 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
     }
 
     override fun predicateCardinality(pred: ByteBuffer): Long {
-        return session.execute(prepQueryCardP.bind(pred)).one().getLong(0)
+        val row = session.execute(prepQueryCardP.bind(pred)).one()
+
+        return row?.getLong(0) ?: 0L
     }
 
     override fun objectCardinality(obj: ByteBuffer): Long {
@@ -107,10 +108,9 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
     override fun objectAndPredicateCardinality(pred: ByteBuffer, obj: ByteBuffer): Long {
         val bucket = objectToBucketNumber(obj)
 
-        return session.execute(prepQueryCardPO.bind()
-            .setBytesUnsafe(0, pred)
-            .setInt(1, bucket)
-        ).one().getLong(0)
+        val row = session.execute(prepQueryCardPO.bind().setBytesUnsafe(0, pred).setInt(1, bucket)).one()
+
+        return row?.getLong(0) ?: 0L
     }
 
     override fun incrementCardC(context: ByteBuffer, add: Long): ResultSetFuture {
