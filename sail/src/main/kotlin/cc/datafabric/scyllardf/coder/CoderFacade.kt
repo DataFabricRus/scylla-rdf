@@ -8,8 +8,8 @@ import cc.datafabric.scyllardf.coder.impl.IRIWithFixedNamespaceCoder
 import cc.datafabric.scyllardf.coder.impl.LiteralDefaultCoder
 import cc.datafabric.scyllardf.coder.impl.LiteralWithLangCoder
 import cc.datafabric.scyllardf.coder.impl.LiteralWithPrimitiveDatatypeCoder
+import cc.datafabric.scyllardf.dao.IDictionaryDAO
 import cc.datafabric.scyllardf.dao.SPOCIteration
-import cc.datafabric.scyllardf.dao.ScyllaRDFDAO
 import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
 import cc.datafabric.scyllardf.model.impl.EncodedBNode
 import cc.datafabric.scyllardf.model.impl.EncodedIRI
@@ -35,7 +35,7 @@ public object CoderFacade : ICoderFacade {
 
     private var isInitialized = false
 
-    fun initialize(dao: ScyllaRDFDAO) {
+    fun initialize(dao: IDictionaryDAO) {
         synchronized(this) {
             if (!isInitialized) {
                 /**
@@ -44,7 +44,7 @@ public object CoderFacade : ICoderFacade {
                 var knownVocabsDict = dao.loadKnownVocabulariesDictionary()
                 val knownVocabsCoder = IRIFromKnownVocabularyCoder(0)
                 knownVocabsDict = knownVocabsCoder.initialize(knownVocabsDict)
-                dao.updateKnownVocabulariesDictionary(knownVocabsDict)
+                dao.saveKnownVocabulariesDictionary(knownVocabsDict)
                 iriCoders.add(0, knownVocabsCoder)
 
                 iriCoders.add(1, IRIWithFixedNamespaceCoder(1))

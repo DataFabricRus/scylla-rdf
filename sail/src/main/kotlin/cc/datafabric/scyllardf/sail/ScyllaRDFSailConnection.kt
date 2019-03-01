@@ -1,6 +1,8 @@
 package cc.datafabric.scyllardf.sail
 
-import cc.datafabric.scyllardf.dao.ScyllaRDFDAO
+import cc.datafabric.scyllardf.dao.ICardinalityDAO
+import cc.datafabric.scyllardf.dao.IIndexDAO
+import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
 import org.eclipse.rdf4j.common.iteration.CloseableIteration
 import org.eclipse.rdf4j.model.IRI
 import org.eclipse.rdf4j.model.Namespace
@@ -13,15 +15,17 @@ import org.eclipse.rdf4j.query.Dataset
 import org.eclipse.rdf4j.query.QueryEvaluationException
 import org.eclipse.rdf4j.query.algebra.QueryRoot
 import org.eclipse.rdf4j.query.algebra.TupleExpr
-import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.StrictEvaluationStrategyFactory
 import org.eclipse.rdf4j.sail.SailException
 import org.eclipse.rdf4j.sail.evaluation.SailTripleSource
 import org.eclipse.rdf4j.sail.helpers.NotifyingSailConnectionBase
 import org.slf4j.LoggerFactory
 
-class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: ScyllaRDFDAO)
-    : NotifyingSailConnectionBase(sail) {
+class ScyllaRDFSailConnection(
+    private val sail: ScyllaRDFSail,
+    private val indexDao: IIndexDAO,
+    private val cardinalityDao: ICardinalityDAO
+) : NotifyingSailConnectionBase(sail) {
 
     companion object {
         private val LOG = LoggerFactory.getLogger(ScyllaRDFSailConnection::class.java)
@@ -31,12 +35,12 @@ class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: 
     private val tripleSource = SailTripleSource(this, false, VF)
 
     override fun removeNamespaceInternal(prefix: String) {
-        dao.removeNamespace(prefix)
+        indexDao.removeNamespace(prefix)
     }
 
     override fun setNamespaceInternal(prefix: String?, name: String?) {
         if (prefix != null && name != null) {
-            dao.setNamespace(prefix, name)
+            indexDao.setNamespace(prefix, name)
         }
     }
 
@@ -45,35 +49,36 @@ class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: 
             throw SailException("There is no namespace with the given prefix!")
         }
 
-        return dao.getNamespace(prefix)
+        return indexDao.getNamespace(prefix)
     }
 
     override fun getNamespacesInternal(): CloseableIteration<out Namespace, SailException> {
-        return sail.getCoder().toNamespaceIteration(dao.getNamespaces())
+        return sail.getCoder().toNamespaceIteration(indexDao.getNamespaces())
     }
 
     override fun clearNamespacesInternal() {
-        dao.clearNamespaces()
+        indexDao.clearNamespaces()
     }
 
     override fun getContextIDsInternal(): CloseableIteration<out Resource, SailException> {
-        return sail.getCoder().toResourceIteration(dao.getContextIDs())
+        return sail.getCoder().toResourceIteration(indexDao.getContextIDs())
     }
 
     override fun addStatementInternal(subj: Resource, pred: IRI, obj: Value, vararg contexts: Resource?) {
+        val s = sail.getCoder().encode(subj)!!
+        val p = sail.getCoder().encode(pred)!!
+        val o = sail.getCoder().encode(obj)!!
+
         if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
-            dao.addStatement(
-                sail.getCoder().encode(subj)!!,
-                sail.getCoder().encode(pred)!!,
-                sail.getCoder().encode(obj)!!
-            )
+            indexDao.addStatement(s, p, o)
+
+            cardinalityDao.incrementCards(s, p, o, null)
         } else {
-            dao.addStatement(
-                sail.getCoder().encode(subj)!!,
-                sail.getCoder().encode(pred)!!,
-                sail.getCoder().encode(obj)!!,
-                sail.getCoder().encode(contexts)
-            )
+            val c = sail.getCoder().encode(contexts)
+
+            indexDao.addStatement(s, p, o, c)
+
+            cardinalityDao.incrementCards(s, p, o, c)
         }
     }
 
@@ -87,19 +92,19 @@ class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: 
             throw SailException("All subject, predicate and object must be set!")
         }
 
+        val s = sail.getCoder().encode(subj)!!
+        val p = sail.getCoder().encode(pred)!!
+        val o = sail.getCoder().encode(obj)!!
+
         if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
-            dao.removeStatements(
-                sail.getCoder().encode(subj)!!,
-                sail.getCoder().encode(pred)!!,
-                sail.getCoder().encode(obj)!!,
-                listOf(null)
-            )
+            indexDao.removeStatements(s, p, o, listOf(null))
+
+            cardinalityDao.decrementCards(s, p, o, null)
         } else {
-            dao.removeStatements(
-                sail.getCoder().encode(subj)!!,
-                sail.getCoder().encode(pred)!!,
-                sail.getCoder().encode(obj)!!,
-                sail.getCoder().encode(contexts))
+            val c = sail.getCoder().encode(contexts)
+            indexDao.removeStatements(s, p, o, c)
+
+            cardinalityDao.decrementCards(s, p, o, c)
         }
     }
 
@@ -107,14 +112,14 @@ class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: 
         subj: Resource?, pred: IRI?, obj: Value?, includeInferred: Boolean, vararg contexts: Resource?
     ): CloseableIteration<out Statement, SailException> {
         return if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
-            sail.getCoder().toStatementIteration(dao.getStatements(
+            sail.getCoder().toStatementIteration(indexDao.getStatements(
                 sail.getCoder().encode(subj),
                 sail.getCoder().encode(pred),
                 sail.getCoder().encode(obj),
                 null
             ))
         } else {
-            sail.getCoder().toStatementIteration(dao.getStatements(
+            sail.getCoder().toStatementIteration(indexDao.getStatements(
                 sail.getCoder().encode(subj),
                 sail.getCoder().encode(pred),
                 sail.getCoder().encode(obj),
@@ -133,7 +138,7 @@ class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: 
         }
 
         val strategy = StrictEvaluationStrategyFactory().createEvaluationStrategy(dataset, tripleSource)
-        val statistics = ScyllaRDFEvaluationStatistics(dao, sail.getCoder())
+        val statistics = ScyllaRDFEvaluationStatistics(cardinalityDao.withCache(), sail.getCoder())
 
         val queryPlanner = ScyllaRDFQueryPlanner(strategy, statistics)
         queryPlanner.optimize(expr, dataset, bindings)
@@ -149,9 +154,13 @@ class ScyllaRDFSailConnection(private val sail: ScyllaRDFSail, private val dao: 
 
     override fun sizeInternal(vararg contexts: Resource?): Long {
         return if (contexts.isNullOrEmpty() || contexts[0] == null) {
-            dao.countTotalTriples()
+            cardinalityDao.numTriples()
         } else {
-            dao.countTriplesInGraphs(contexts.filterNotNull())
+            contexts.filterNotNull()
+                .stream()
+                .map { cardinalityDao.contextCardinality(sail.getCoder().encode(it)) }
+                .reduce { a: Long, b: Long -> a + b }
+                .orElse(0)
         }
     }
 

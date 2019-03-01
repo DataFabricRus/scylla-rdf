@@ -12,18 +12,16 @@ object ScyllaRDFSchema {
         CP_OS,
         CO_SP,
 
-        STAT_C,
-        STAT_S,
-        STAT_P,
-        STAT_O,
-        STAT_SP,
-        STAT_PO,
-        STAT_SO,
+        CARD_C,
+        CARD_P,
+        CARD_PO,
 
         NS,
 
         CODER_KNOWN_VOCABULARIES
     }
+
+    const val CARD_PO_NUM_BUCKETS = 16
 
     val CONTEXT_DEFAULT = ByteBuffer.wrap(byteArrayOf(0))!!
 

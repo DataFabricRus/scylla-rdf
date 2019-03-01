@@ -2,7 +2,7 @@ package cc.datafabric.scyllardf.sail
 
 import cc.datafabric.scyllardf.coder.CoderFacade
 import cc.datafabric.scyllardf.coder.ICoderFacade
-import cc.datafabric.scyllardf.dao.ScyllaRDFDAO
+import cc.datafabric.scyllardf.dao.impl.ScyllaRDFDAOFactory
 import org.eclipse.rdf4j.model.ValueFactory
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory
 import org.eclipse.rdf4j.sail.NotifyingSailConnection
@@ -16,15 +16,15 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
         private val LOG = LoggerFactory.getLogger(ScyllaRDFSail::class.java)
     }
 
-    private lateinit var dao: ScyllaRDFDAO
+    private lateinit var daoFactory: ScyllaRDFDAOFactory
     private lateinit var coder: CoderFacade
 
     override fun initializeInternal() {
         try {
-            dao = ScyllaRDFDAO.create(config.scyllaHosts, config.scyllaPort, config.scyllaKeyspace)
+            daoFactory = ScyllaRDFDAOFactory.create(config.scyllaHosts, config.scyllaPort, config.scyllaKeyspace)
 
             coder = CoderFacade
-            coder.initialize(dao)
+            coder.initialize(daoFactory.getDictionaryDAO())
         } catch (ex: Exception) {
             throw SailException(ex)
         }
@@ -32,7 +32,7 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
 
     override fun getConnectionInternal(): NotifyingSailConnection {
         LOG.debug("getConnectionInternal")
-        return ScyllaRDFSailConnection(this, dao)
+        return ScyllaRDFSailConnection(this, daoFactory.getIndexDAO(), daoFactory.getCardinalityDAO())
     }
 
     override fun getValueFactory(): ValueFactory {
@@ -45,7 +45,7 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
 
     override fun shutDownInternal() {
         LOG.debug("shutDownInternal");
-        dao.close()
+        daoFactory.close()
     }
 
 

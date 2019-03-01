@@ -1,21 +1,37 @@
 package cc.datafabric.scyllardf.dao
 
+import com.datastax.driver.core.ResultSetFuture
 import java.nio.ByteBuffer
 
 interface ICardinalityDAO {
 
-    fun getCardinalityC(context: ByteBuffer?): Double
+    fun withCache(): ICardinalityDAO
 
-    fun getCardinalityS(subj: ByteBuffer): Double
+    fun numTriples(): Long
 
-    fun getCardinalityP(pred: ByteBuffer): Double
+    fun contextCardinality(context: ByteBuffer?): Long
 
-    fun getCardinalityO(obj: ByteBuffer): Double
+    fun subjectCardinality(subj: ByteBuffer): Long
 
-    fun getCardinalitySP(subj: ByteBuffer, pred: ByteBuffer): Double
+    fun predicateCardinality(pred: ByteBuffer): Long
 
-    fun getCardinalitySO(subj: ByteBuffer, obj: ByteBuffer): Double
+    fun objectCardinality(obj: ByteBuffer): Long
 
-    fun getCardinalityPO(pred: ByteBuffer, obj: ByteBuffer): Double
+    fun objectAndPredicateCardinality(pred: ByteBuffer, obj: ByteBuffer): Long
 
+    fun incrementCardC(context: ByteBuffer, add: Long): ResultSetFuture
+
+    fun incrementCardP(pred: ByteBuffer, add: Long): ResultSetFuture
+
+    fun incrementCardPO(pred: ByteBuffer, obj: ByteBuffer, add: Long): ResultSetFuture
+
+    fun incrementCards(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?): List<ResultSetFuture>
+
+    fun incrementCards(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>)
+        : List<ResultSetFuture>
+
+    fun decrementCards(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?): List<ResultSetFuture>
+
+    fun decrementCards(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>)
+        : List<ResultSetFuture>
 }
