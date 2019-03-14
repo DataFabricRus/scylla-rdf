@@ -2,7 +2,6 @@ package cc.datafabric.scyllardf.sail
 
 import cc.datafabric.scyllardf.dao.ICardinalityDAO
 import cc.datafabric.scyllardf.dao.IIndexDAO
-import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
 import org.eclipse.rdf4j.common.iteration.CloseableIteration
 import org.eclipse.rdf4j.model.IRI
 import org.eclipse.rdf4j.model.Namespace
@@ -15,6 +14,7 @@ import org.eclipse.rdf4j.query.Dataset
 import org.eclipse.rdf4j.query.QueryEvaluationException
 import org.eclipse.rdf4j.query.algebra.QueryRoot
 import org.eclipse.rdf4j.query.algebra.TupleExpr
+import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.StrictEvaluationStrategyFactory
 import org.eclipse.rdf4j.sail.SailException
 import org.eclipse.rdf4j.sail.evaluation.SailTripleSource
@@ -24,7 +24,8 @@ import org.slf4j.LoggerFactory
 class ScyllaRDFSailConnection(
     private val sail: ScyllaRDFSail,
     private val indexDao: IIndexDAO,
-    private val cardinalityDao: ICardinalityDAO
+    private val cardinalityDao: ICardinalityDAO,
+    private val cardinalityEstimationEnabled: Boolean
 ) : NotifyingSailConnectionBase(sail) {
 
     companion object {
@@ -138,7 +139,14 @@ class ScyllaRDFSailConnection(
         }
 
         val strategy = StrictEvaluationStrategyFactory().createEvaluationStrategy(dataset, tripleSource)
-        val statistics = ScyllaRDFEvaluationStatistics(cardinalityDao.withCache(), sail.getCoder())
+
+        val statistics: EvaluationStatistics = if (cardinalityEstimationEnabled) {
+            LOG.debug("The cardinality estimation is used!")
+
+            ScyllaRDFEvaluationStatistics(cardinalityDao.withCache(), sail.getCoder())
+        } else {
+            EvaluationStatistics()
+        }
 
         val queryPlanner = ScyllaRDFQueryPlanner(strategy, statistics)
         queryPlanner.optimize(expr, dataset, bindings)

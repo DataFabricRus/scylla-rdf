@@ -1,6 +1,5 @@
 package cc.datafabric.scyllardf.sail
 
-import com.datastax.driver.core.Cluster
 import org.eclipse.rdf4j.model.IRI
 import org.eclipse.rdf4j.model.Model
 import org.eclipse.rdf4j.model.Resource
@@ -17,9 +16,12 @@ class ScyllaRDFSailConfig : AbstractSailImplConfig() {
 
         private val VF = SimpleValueFactory.getInstance()
 
-        private val SCYLLA_KEYSPACE: IRI = VF.createIRI(NAMESPACE_PREFIX, "keyspace")
-        private val SCYLLA_HOSTS: IRI = VF.createIRI(NAMESPACE_PREFIX, "hosts")
-        private val SCYLLA_PORT: IRI = VF.createIRI(NAMESPACE_PREFIX, "port")
+        private val SCYLLA_KEYSPACE = VF.createIRI(NAMESPACE_PREFIX, "keyspace")
+        private val SCYLLA_HOSTS = VF.createIRI(NAMESPACE_PREFIX, "hosts")
+        private val SCYLLA_PORT = VF.createIRI(NAMESPACE_PREFIX, "port")
+
+        private val SCYLLA_RDF_CARDINALITY_ESTIMATION_ENABLED =
+            VF.createIRI(NAMESPACE_PREFIX, "cardinalityEstimationEnabled")
 
         private val ELASTICSEARCH_HOST: IRI = VF.createIRI(NAMESPACE_PREFIX, "elasticsearchHost")
         private val ELASTICSEARCH_MAX_DOCUMENTS: IRI = VF
@@ -30,6 +32,8 @@ class ScyllaRDFSailConfig : AbstractSailImplConfig() {
     var scyllaHosts = mutableListOf<InetAddress>()
     var scyllaPort: Int = 9042
 
+    var cardinalityEstimationEnabled = false
+
     var elasticsearchHost: String? = null
     var elasticsearchMaxDocuments: Int = 100
 
@@ -38,10 +42,12 @@ class ScyllaRDFSailConfig : AbstractSailImplConfig() {
 
         m.add(implNode, SCYLLA_KEYSPACE, VF.createLiteral(scyllaKeyspace))
 
-        val scyllaHostsAsString = scyllaHosts.map { it -> it.hostName }.joinToString()
+        val scyllaHostsAsString = scyllaHosts.map { it.hostName }.joinToString()
         m.add(implNode, SCYLLA_HOSTS, VF.createLiteral(scyllaHostsAsString))
 
         m.add(implNode, SCYLLA_PORT, VF.createLiteral(scyllaPort))
+
+        m.add(implNode, SCYLLA_RDF_CARDINALITY_ESTIMATION_ENABLED, VF.createLiteral(cardinalityEstimationEnabled))
 
         if (elasticsearchHost != null) {
             m.add(implNode, ELASTICSEARCH_HOST, VF.createLiteral(elasticsearchHost))
@@ -65,6 +71,11 @@ class ScyllaRDFSailConfig : AbstractSailImplConfig() {
             scyllaPort = Models.getPropertyLiteral(m, implNode, SCYLLA_PORT)
                 .orElseThrow { SailConfigException("Scylla Port is required!") }
                 .stringValue().toInt()
+
+            cardinalityEstimationEnabled = Models
+                .getPropertyLiteral(m, implNode, SCYLLA_RDF_CARDINALITY_ESTIMATION_ENABLED)
+                .orElse(VF.createLiteral(cardinalityEstimationEnabled))
+                .stringValue()!!.toBoolean()
 
             elasticsearchHost = Models.getPropertyString(m, implNode, ELASTICSEARCH_HOST).orElse(null)
             if (!elasticsearchHost.isNullOrEmpty()) {

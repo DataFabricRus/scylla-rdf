@@ -32,7 +32,12 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
 
     override fun getConnectionInternal(): NotifyingSailConnection {
         LOG.debug("getConnectionInternal")
-        return ScyllaRDFSailConnection(this, daoFactory.getIndexDAO(), daoFactory.getCardinalityDAO())
+        return ScyllaRDFSailConnection(
+            this,
+            daoFactory.getIndexDAO(),
+            daoFactory.getCardinalityDAO(),
+            config.cardinalityEstimationEnabled
+        )
     }
 
     override fun getValueFactory(): ValueFactory {

@@ -22,7 +22,7 @@
                         </th>
                         <td>
                             <select id="type" name="type">
-                                <option value="scylla-rdf">Scylla RDF Store</option>
+                                <option value="scylla-rdf">Scylla RDF</option>
                             </select>
                         </td>
                     </tr>
@@ -64,6 +64,14 @@
                         <th>Scylla Port</th>
                         <td>
                             <input type="number" id="port" name="Scylla Port" size="48" value="9042"/>
+                        </td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <th>Cardinality Estimation Enabled</th>
+                        <td>
+                            <input type="checkbox" id="cardinalityEstimationEmabled"
+                                   name="Cardinality Estimation Enabled" value="true" checked="checked"/>
                         </td>
                         <td></td>
                     </tr>

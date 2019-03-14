@@ -21,6 +21,10 @@
          scylla-rdf:hosts "{%Scylla Hosts|%}" ;
          scylla-rdf:port "{%Scylla Port|%}" ;
 
+         # Scylla-RDF configuration
+
+         scylla-rdf:cardinalityEstimationEnabled "{%Cardinality Estimation Enabled|%}" ;
+
          # Elasticsearch configuration
 
          scylla-rdf:elasticsearchHost "{%Elasticsearch Host|%}" ;
