@@ -81,6 +81,8 @@ class ScyllaRDFSailConnection(
 
             cardinalityDao.incrementCards(s, p, o, c)
         }
+
+        notifyStatementAdded(subj, pred, obj, *contexts)
     }
 
     override fun removeStatementsInternal(subj: Resource?, pred: IRI?, obj: Value?, vararg contexts: Resource?) {
@@ -107,6 +109,8 @@ class ScyllaRDFSailConnection(
 
             cardinalityDao.decrementCards(s, p, o, c)
         }
+
+        notifyStatementRemoved(subj, pred, obj, *contexts)
     }
 
     override fun getStatementsInternal(
@@ -190,5 +194,25 @@ class ScyllaRDFSailConnection(
 
     override fun closeInternal() {
         LOG.debug("closeInternal")
+    }
+
+    private fun notifyStatementAdded(subj: Resource, pred: IRI, obj: Value, vararg contexts: Resource?) {
+        if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
+            notifyStatementAdded(VF.createStatement(subj, pred, obj))
+        } else {
+            contexts.forEach {
+                notifyStatementAdded(VF.createStatement(subj, pred, obj, it))
+            }
+        }
+    }
+
+    private fun notifyStatementRemoved(subj: Resource?, pred: IRI?, obj: Value?, vararg contexts: Resource?) {
+        if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
+            notifyStatementRemoved(VF.createStatement(subj, pred, obj))
+        } else {
+            contexts.forEach {
+                notifyStatementRemoved(VF.createStatement(subj, pred, obj, it))
+            }
+        }
     }
 }

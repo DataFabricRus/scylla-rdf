@@ -34,6 +34,11 @@ class ScyllaRDFSailFactory : SailFactory {
                 val scyllaRDFSail = ScyllaRDFSail(scyllaRDFSailConfig)
 
                 if (!scyllaRDFSailConfig.elasticsearchHost.isNullOrEmpty()) {
+                    /**
+                     * @see https://github.com/elastic/elasticsearch/issues/25741
+                     */
+                    System.setProperty("es.set.netty.runtime.available.processors", "false")
+
                     val fullTextSail = LuceneSail()
 
                     fullTextSail.setParameter(LuceneSail.INDEX_CLASS_KEY, ElasticsearchIndex::class.java.name)

@@ -1,5 +1,8 @@
 .*
 **/src
 **/pom.xml
-rdf4j-conf
+scylla-rdf-data
 sail
+web/src
+web/target/dependencies
+web/target/antrun
