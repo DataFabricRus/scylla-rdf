@@ -13,6 +13,7 @@ interface IIndexDAO {
     fun insertInCPOS(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture
     fun insertInCOSP(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture
     fun getContextIDs(): CloseableIteration<ByteBuffer, SailException>
+    fun clearContext(context: ByteBuffer?)
     fun getNamespaces(): CloseableIteration<Array<String>, SailException>
     fun getNamespace(prefix: String): String?
     fun setNamespace(prefix: String, name: String)

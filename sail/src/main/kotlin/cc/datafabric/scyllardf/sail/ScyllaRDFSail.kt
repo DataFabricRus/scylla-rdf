@@ -49,7 +49,6 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
     }
 
     override fun shutDownInternal() {
-        LOG.debug("shutDownInternal");
         daoFactory.close()
     }
 

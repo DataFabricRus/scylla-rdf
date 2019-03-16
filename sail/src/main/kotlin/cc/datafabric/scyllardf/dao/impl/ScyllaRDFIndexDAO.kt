@@ -86,6 +86,26 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
             { value -> value != ScyllaRDFSchema.CONTEXT_DEFAULT })
     }
 
+    /**
+     * If context is null or refers to the default graph, then absolutely all triples are removed.
+     * Otherwise, only triples in the given graph are removed.
+     */
+    override fun clearContext(context: ByteBuffer?) {
+        if (context == null || context == ScyllaRDFSchema.CONTEXT_DEFAULT) {
+            val futures = mutableListOf<ResultSetFuture>()
+
+            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.S_POC}"))
+            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.P_OSC}"))
+            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.O_SPC}"))
+
+            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CS_PO}"))
+            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CP_OS}"))
+            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CO_SP}"))
+
+            Futures.allAsList(futures).get()
+        }
+    }
+
     override fun getNamespaces(): CloseableIteration<Array<String>, SailException> {
         return TransformRowIteration(session.executeAsync(prepGetNamespaces.bind())) { row ->
             arrayOf(row.getString(0), row.getString(1))

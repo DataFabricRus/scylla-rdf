@@ -11,6 +11,7 @@ import com.google.common.cache.CacheLoader
 import com.google.common.hash.HashCode
 import com.google.common.hash.Hashing
 import com.google.common.primitives.Bytes
+import com.google.common.util.concurrent.Futures
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
 
@@ -113,11 +114,20 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
         return row?.getLong(0) ?: 0L
     }
 
-    override fun incrementCardC(context: ByteBuffer, add: Long): ResultSetFuture {
-        return session.executeAsync(prepIncCardC.bind()
+    override fun incrementCardC(context: ByteBuffer, add: Long): List<ResultSetFuture> {
+        val futures = mutableListOf<ResultSetFuture>()
+        if (context != ScyllaRDFSchema.CONTEXT_DEFAULT) {
+            futures.add(session.executeAsync(prepIncCardC.bind()
+                .setLong(0, add)
+                .setBytesUnsafe(1, ScyllaRDFSchema.CONTEXT_DEFAULT)
+            ))
+        }
+        futures.add(session.executeAsync(prepIncCardC.bind()
             .setLong(0, add)
             .setBytesUnsafe(1, context)
-        )
+        ))
+
+        return futures
     }
 
     override fun incrementCardP(pred: ByteBuffer, add: Long): ResultSetFuture {
@@ -141,7 +151,7 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
         : List<ResultSetFuture> {
         val futures = ArrayList<ResultSetFuture>(3)
 
-        futures.add(incrementCardC(context ?: ScyllaRDFSchema.CONTEXT_DEFAULT, 1))
+        futures.addAll(incrementCardC(context ?: ScyllaRDFSchema.CONTEXT_DEFAULT, 1))
         futures.add(incrementCardP(pred, 1))
         futures.add(incrementCardPO(pred, obj, 1))
 
@@ -203,6 +213,18 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
         return futures
     }
 
+    override fun clearContext(context: ByteBuffer?) {
+        if (context == null || context == ScyllaRDFSchema.CONTEXT_DEFAULT) {
+            val futures = mutableListOf<ResultSetFuture>()
+
+            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CARD_C}"))
+            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CARD_P}"))
+            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CARD_PO}"))
+
+            Futures.allAsList(futures).get()
+        }
+    }
+
     private fun objectToBucketNumber(obj: ByteBuffer): Int {
         return Hashing.consistentHash(HashCode.fromInt(obj.hashCode()), ScyllaRDFSchema.CARD_PO_NUM_BUCKETS)
     }
@@ -258,7 +280,7 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
             }
         }
 
-        override fun incrementCardC(context: ByteBuffer, add: Long): ResultSetFuture {
+        override fun incrementCardC(context: ByteBuffer, add: Long): List<ResultSetFuture> {
             return wrapped.incrementCardC(context, add)
         }
 
@@ -284,6 +306,10 @@ internal class ScyllaRDFCardinalityDAO(private val session: Session) : AbstractS
 
         override fun decrementCards(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>): List<ResultSetFuture> {
             return wrapped.decrementCards(subj, pred, obj, contexts)
+        }
+
+        override fun clearContext(context: ByteBuffer?) {
+            wrapped.clearContext(context)
         }
 
         private fun scyllaEstimatesCacheLoader(): Function<Int, Long> {

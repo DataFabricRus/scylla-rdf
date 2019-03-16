@@ -177,7 +177,12 @@ class ScyllaRDFSailConnection(
     }
 
     override fun clearInternal(vararg contexts: Resource?) {
-        LOG.debug("closeInternal")
+        if (contexts.isEmpty()) {
+            indexDao.clearContext(null)
+            cardinalityDao.clearContext(null)
+        } else {
+            throw SailException("Clearing a non-default context is not supported!")
+        }
     }
 
     override fun startTransactionInternal() {

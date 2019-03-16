@@ -19,7 +19,7 @@ interface ICardinalityDAO {
 
     fun objectAndPredicateCardinality(pred: ByteBuffer, obj: ByteBuffer): Long
 
-    fun incrementCardC(context: ByteBuffer, add: Long): ResultSetFuture
+    fun incrementCardC(context: ByteBuffer, add: Long): List<ResultSetFuture>
 
     fun incrementCardP(pred: ByteBuffer, add: Long): ResultSetFuture
 
@@ -34,4 +34,6 @@ interface ICardinalityDAO {
 
     fun decrementCards(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>)
         : List<ResultSetFuture>
+
+    fun clearContext(context: ByteBuffer?)
 }
