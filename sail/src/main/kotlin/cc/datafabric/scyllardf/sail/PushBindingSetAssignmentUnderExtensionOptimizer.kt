@@ -14,26 +14,29 @@ import org.eclipse.rdf4j.query.algebra.helpers.AbstractQueryModelVisitor
  * Makes sure that [BindingSetAssignment] is lower than [Extension] before entering [QueryJoinOptimizer],
  * otherwise it makes query suboptimal by putting [BindingSetAssignment] on the right side of the join.
  *
+ * In example, the following snippet:
  *
- * Example:
+ *  <pre>
+ *  {@code
+ *      Join
+ *          BindingSetAssignment(...)
+ *          Extension
+ *              ExtensionElem (...)
+ *                  Var (name=...)
+ *  }
+ *  </pre>
  *
- * <pre>
- * Join
- * BindingSetAssignment(...)
- * Extension
- * ExtensionElem (...)
- * Var (name=...)
-</pre> *
+ * should be rewritten to:
  *
- * will be rewritten to:
- *
- * <pre>
- * Extension
- * ExtensionElem (...)
- * Var (name=...)
- * Join
- * BindingSetAssignment(...)
-</pre> *
+ *  <pre>
+ *  {@code
+ *      Extension
+ *          ExtensionElem (...)
+ *              Var (name=...)
+ *      Join
+ *          BindingSetAssignment(...)
+ *  }
+ *  </pre>
  *
  * @author Maxim Kolchin (kolchinmax@gmail.com)
  * @see [RDF4J-1229](https://github.com/eclipse/rdf4j/issues/1229)

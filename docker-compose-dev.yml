@@ -1,7 +1,7 @@
 version: "3"
 services:
   scylladb:
-    image: scylladb/scylla:3.0.3
+    image: scylladb/scylla:3.0.4
     ports:
       - "7000-7001:7000-7001"
       - "9042:9042"
@@ -17,7 +17,6 @@ services:
       - xpack.security.enabled=false
       - bootstrap.memory_lock=true
       - discovery.type=single-node
-#      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
     ulimits:
       memlock:
         soft: -1
