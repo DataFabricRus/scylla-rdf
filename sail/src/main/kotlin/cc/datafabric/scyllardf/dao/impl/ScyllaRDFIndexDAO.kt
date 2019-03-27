@@ -69,11 +69,11 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
     }
 
     override fun insertInCSPO(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
-        return session.executeAsync(setBytesUnsafe(prepInsertCSPO.bind(), context, obj, subj, pred))
+        return session.executeAsync(setBytesUnsafe(prepInsertCSPO.bind(), context, subj, pred, obj))
     }
 
     override fun insertInCPOS(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
-        return session.executeAsync(setBytesUnsafe(prepInsertCPOS.bind(), context, obj, subj, pred))
+        return session.executeAsync(setBytesUnsafe(prepInsertCPOS.bind(), context, pred, obj, subj))
     }
 
     override fun insertInCOSP(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
@@ -230,13 +230,13 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
             "INSERT INTO ${ScyllaRDFSchema.Table.O_SPC} (object, subject, predicate, context) " +
                 "VALUES (?, ?, ?, ?)")
         prepInsertCSPO = session.prepare(
-            "INSERT INTO ${ScyllaRDFSchema.Table.S_POC} (context, subject, predicate, object) " +
+            "INSERT INTO ${ScyllaRDFSchema.Table.CS_PO} (context, subject, predicate, object) " +
                 "VALUES (?, ?, ?, ?)")
         prepInsertCPOS = session.prepare(
-            "INSERT INTO ${ScyllaRDFSchema.Table.P_OSC} (context, predicate, object, subject) " +
+            "INSERT INTO ${ScyllaRDFSchema.Table.CP_OS} (context, predicate, object, subject) " +
                 "VALUES (?, ?, ?, ?)")
         prepInsertCOSP = session.prepare(
-            "INSERT INTO ${ScyllaRDFSchema.Table.O_SPC} (context, object, subject, predicate) " +
+            "INSERT INTO ${ScyllaRDFSchema.Table.CO_SP} (context, object, subject, predicate) " +
                 "VALUES (?, ?, ?, ?)")
 
         prepDeleteSPOC = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.S_POC} WHERE " +
