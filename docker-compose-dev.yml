@@ -11,7 +11,7 @@ services:
     volumes:
       - "./scylla-rdf-data/scylla:/var/lib/scylla"
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:5.6.9
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.5.4
     environment:
       - cluster.name=elasticsearch
       - xpack.security.enabled=false
