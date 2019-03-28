@@ -2,12 +2,13 @@ version: "3"
 services:
   scylladb:
     image: scylladb/scylla:3.0.4
+    command: --smp 2 --memory 2G --overprovisioned 1 --developer-mode 1
     ports:
-      - "7000-7001:7000-7001"
-      - "9042:9042"
-      - "9160:9160"
-      - "10000:10000"
-      - "7199:7199"
+      - 7000-7001:7000-7001
+      - 9042:9042
+      - 9160:9160
+      - 10000:10000
+      - 7199:7199
     volumes:
       - "./scylla-rdf-data/scylla:/var/lib/scylla"
   elasticsearch:
@@ -33,7 +34,7 @@ services:
       - scylladb
       - elasticsearch
     ports:
-      - "80:80"
+      - 80:80
     volumes:
       - "./scylla-rdf-data/rdf4j:/root/.RDF4J"
 
