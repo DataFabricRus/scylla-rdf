@@ -9,7 +9,14 @@ import com.datastax.driver.core.HostDistance
 import com.datastax.driver.core.PoolingOptions
 import com.datastax.driver.core.QueryOptions
 import com.datastax.driver.core.Session
+import com.datastax.driver.core.Statement
+import com.datastax.driver.core.WriteType
+import com.datastax.driver.core.exceptions.DriverException
+import com.datastax.driver.core.policies.DefaultRetryPolicy
+import com.datastax.driver.core.policies.LoggingRetryPolicy
+import com.datastax.driver.core.policies.RetryPolicy
 import com.datastax.driver.core.policies.RoundRobinPolicy
+import com.datastax.driver.core.policies.TokenAwarePolicy
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.net.InetAddress
@@ -36,9 +43,10 @@ class ScyllaRDFDAOFactory private constructor(
             val cluster = Cluster.builder()
                 .addContactPoints(hosts)
                 .withPort(port)
-                .withLoadBalancingPolicy(RoundRobinPolicy())
+                .withLoadBalancingPolicy(TokenAwarePolicy(RoundRobinPolicy()))
                 .withQueryOptions(QueryOptions().setConsistencyLevel(ConsistencyLevel.ONE))
                 .withPoolingOptions(poolingOptions)
+                .withRetryPolicy(LoggingRetryPolicy(TolerantRetryPolicy()))
                 .build()
 
             val dao = ScyllaRDFDAOFactory(cluster, keyspace)
@@ -92,6 +100,66 @@ class ScyllaRDFDAOFactory private constructor(
 
     override fun close() {
         cluster.close()
+    }
+
+    private class TolerantRetryPolicy : RetryPolicy {
+
+        companion object {
+            private val DEFAULT = DefaultRetryPolicy.INSTANCE
+        }
+
+        override fun onReadTimeout(
+            statement: Statement?,
+            cl: ConsistencyLevel?,
+            requiredResponses: Int,
+            receivedResponses: Int,
+            dataRetrieved: Boolean,
+            nbRetry: Int
+        ): RetryPolicy.RetryDecision {
+            return DEFAULT
+                .onReadTimeout(statement, cl, requiredResponses, receivedResponses, dataRetrieved, nbRetry)
+        }
+
+        override fun onWriteTimeout(
+            statement: Statement?,
+            cl: ConsistencyLevel?,
+            writeType: WriteType?,
+            requiredAcks: Int,
+            receivedAcks: Int,
+            nbRetry: Int
+        ): RetryPolicy.RetryDecision {
+            if (writeType == WriteType.SIMPLE && nbRetry < 3) {
+                return RetryPolicy.RetryDecision.retry(cl)
+            }
+
+            return DEFAULT.onWriteTimeout(statement, cl, writeType, requiredAcks, receivedAcks, nbRetry)
+        }
+
+        override fun onUnavailable(
+            statement: Statement?,
+            cl: ConsistencyLevel?,
+            requiredReplica: Int,
+            aliveReplica: Int,
+            nbRetry: Int
+        ): RetryPolicy.RetryDecision {
+            return DEFAULT.onUnavailable(statement, cl, requiredReplica, aliveReplica, nbRetry)
+        }
+
+        override fun onRequestError(
+            statement: Statement?,
+            cl: ConsistencyLevel?,
+            e: DriverException?,
+            nbRetry: Int
+        ): RetryPolicy.RetryDecision {
+            return DEFAULT.onRequestError(statement, cl, e, nbRetry)
+        }
+
+        override fun init(cluster: Cluster?) {
+        }
+
+        override fun close() {
+        }
+
     }
 
 }
