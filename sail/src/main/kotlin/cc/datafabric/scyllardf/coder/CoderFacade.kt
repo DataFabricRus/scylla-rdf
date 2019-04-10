@@ -27,47 +27,58 @@ import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.eclipse.rdf4j.sail.SailException
 import java.nio.ByteBuffer
 
-public object CoderFacade : ICoderFacade {
-    private val iriCoders = mutableListOf<ICoder<IRI>>()
-    private val bnodeCoders = mutableListOf<ICoder<BNode>>()
-    private val langStringCoders = mutableListOf<ICoder<Literal>>()
-    private val literalCoders = mutableListOf<ICoder<Literal>>()
+public class CoderFacade : ICoderFacade {
+
+    private lateinit var iriCoders: Array<ICoder<IRI>>
+    private lateinit var bnodeCoders: Array<ICoder<BNode>>
+    private lateinit var langStringCoders: Array<ICoder<Literal>>
+    private lateinit var literalCoders: Array<ICoder<Literal>>
 
     private var isInitialized = false
 
-    fun initialize(dao: IDictionaryDAO) {
-        synchronized(this) {
-            if (!isInitialized) {
-                /**
-                 * IRI coders
-                 */
-                var knownVocabsDict = dao.loadKnownVocabulariesDictionary()
-                val knownVocabsCoder = IRIFromKnownVocabularyCoder(0)
-                knownVocabsDict = knownVocabsCoder.initialize(knownVocabsDict)
+    /**
+     * @param saveOnChangesInDictionary true may cause consistency issues if executed in parallel
+     */
+    fun initialize(dao: IDictionaryDAO, saveOnChangesInDictionary: Boolean = false) {
+        if (!isInitialized) {
+            /**
+             * IRI coders
+             */
+            var knownVocabsDict = dao.loadKnownVocabulariesDictionary()
+            val knownVocabsCoder = IRIFromKnownVocabularyCoder(0)
+            knownVocabsDict = knownVocabsCoder.initialize(knownVocabsDict)
+
+            if (saveOnChangesInDictionary) {
                 dao.saveKnownVocabulariesDictionary(knownVocabsDict)
-                iriCoders.add(0, knownVocabsCoder)
-
-                iriCoders.add(1, IRIWithFixedNamespaceCoder(1))
-                iriCoders.add(2, IRIDefaultCoder(2))
-
-                /**
-                 * BNode coders
-                 */
-                bnodeCoders.add(0, BNodeDefaultCoder(0))
-
-                /**
-                 * Lang string coders
-                 */
-                langStringCoders.add(0, LiteralWithLangCoder(0))
-
-                /**
-                 * Typed literal coders
-                 */
-                literalCoders.add(0, LiteralWithPrimitiveDatatypeCoder(0))
-                literalCoders.add(1, LiteralDefaultCoder(1))
-
-                isInitialized = true
             }
+
+            iriCoders = arrayOf(
+                knownVocabsCoder,
+                IRIWithFixedNamespaceCoder(1),
+                IRIDefaultCoder(2)
+            )
+
+            /**
+             * BNode coders
+             */
+            bnodeCoders = arrayOf(BNodeDefaultCoder(0))
+
+            /**
+             * Lang string coders
+             */
+            langStringCoders = arrayOf(LiteralWithLangCoder(0))
+
+            /**
+             * Typed literal coders
+             */
+            literalCoders = arrayOf(
+                LiteralWithPrimitiveDatatypeCoder(0),
+                LiteralDefaultCoder(1)
+            )
+
+            isInitialized = true
+        } else {
+            throw IllegalStateException("CoderFacade was already initialized!")
         }
     }
 
@@ -113,49 +124,45 @@ public object CoderFacade : ICoderFacade {
             return null
         }
 
-        var hash: ByteBuffer? = null
         for (coder in iriCoders) {
-            hash = coder.encode(value)
+            val hash = coder.encode(value)
             if (hash != null) {
-                break
+                return hash
             }
         }
 
-        return hash!!
+        throw IllegalStateException("Couldn't find an appropriate coder!")
     }
 
     override fun encode(value: BNode): ByteBuffer {
-        var hash: ByteBuffer? = null
         for (coder in bnodeCoders) {
-            hash = coder.encode(value)
+            val hash = coder.encode(value)
             if (hash != null) {
-                break
+                return hash
             }
         }
 
-        return hash!!
+        throw IllegalStateException("Couldn't find an appropriate coder!")
     }
 
     override fun encode(value: Literal): ByteBuffer {
-        var hash: ByteBuffer? = null
-
         if (value.datatype == RDF.LANGSTRING) {
             for (coder in langStringCoders) {
-                hash = coder.encode(value)
+                val hash = coder.encode(value)
                 if (hash != null) {
-                    break
+                    return hash
                 }
             }
         } else {
             for (coder in literalCoders) {
-                hash = coder.encode(value)
+                val hash = coder.encode(value)
                 if (hash != null) {
-                    break
+                    return hash
                 }
             }
         }
 
-        return hash!!
+        throw IllegalStateException("Couldn't find an appropriate coder!")
     }
 
     override fun encode(stmt: Statement): Array<ByteBuffer> {
@@ -180,7 +187,7 @@ public object CoderFacade : ICoderFacade {
             AbstractCoder.MARKER_VALUE_TYPE_BNODE -> EncodedBNode(bnodeCoders[coderId], hash)
             AbstractCoder.MARKER_VALUE_TYPE_LANG_STRING -> EncodedLiteral(langStringCoders[coderId], hash)
             AbstractCoder.MARKER_VALUE_TYPE_LITERAL -> EncodedLiteral(literalCoders[coderId], hash)
-            else -> throw IllegalArgumentException("Could find the suitable coder!")
+            else -> throw IllegalStateException("Could find an appropriate coder!")
         }
     }
 

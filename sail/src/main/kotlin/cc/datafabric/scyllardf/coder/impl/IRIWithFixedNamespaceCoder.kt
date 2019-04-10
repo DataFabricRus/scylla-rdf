@@ -54,12 +54,13 @@ internal class IRIWithFixedNamespaceCoder(coderId: Int) : AbstractCoder<IRI>(cod
         }
 
         val hashPrefix = dictionary[value.namespace]
-        if (hashPrefix == null) {
-            return null
-        }
 
-        val hashSuffix = value.localName.toByteArray(Charsets.UTF_8)
-        return ByteBuffer.wrap(Bytes.concat(hashPrefix.array(), hashSuffix))
+        return if (hashPrefix == null) {
+            null
+        } else {
+            val hashSuffix = value.localName.toByteArray(Charsets.UTF_8)
+            ByteBuffer.wrap(Bytes.concat(hashPrefix.array(), hashSuffix))
+        }
     }
 
     override fun decode(hash: ByteBuffer): IRI {

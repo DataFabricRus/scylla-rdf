@@ -23,8 +23,8 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
         try {
             daoFactory = ScyllaRDFDAOFactory.create(config.scyllaHosts, config.scyllaPort, config.scyllaKeyspace)
 
-            coder = CoderFacade
-            coder.initialize(daoFactory.getDictionaryDAO())
+            coder = CoderFacade()
+            coder.initialize(daoFactory.getDictionaryDAO(), true)
         } catch (ex: Exception) {
             throw SailException(ex)
         }
