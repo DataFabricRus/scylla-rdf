@@ -15,3 +15,7 @@ We use Apache Beam to bulk load RDF data to ScyllaDB. The repository with the pi
 ## Benchmarks
 
 We benchmark new features, the results available in https://github.com/DataFabricRus/scylla-rdf-benchmark.
+
+## License
+
+MIT License
