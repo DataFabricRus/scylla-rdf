@@ -89,27 +89,17 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
         if (context == null || context == ScyllaRDFSchema.CONTEXT_DEFAULT) {
             clearAllContexts()
         } else {
-            val rs = session.execute(setBytesUnsafe(selectCSPOByC.bind(), context))
-            val iter = rs.iterator()
-            val futures = mutableListOf<ResultSetFuture>()
+            session.execute(setBytesUnsafe(selectCSPOByC.bind(), context)).forEach {
+                waitUntilDone(
+                        session.executeAsync(setBytesUnsafe(deleteSPOC.bind(), it)),
+                        session.executeAsync(setBytesUnsafe(deletePOSC.bind(), it)),
+                        session.executeAsync(setBytesUnsafe(deleteOSPC.bind(), it)),
 
-            while (iter.hasNext()) {
-                if (rs.availableWithoutFetching == 0) {
-                    waitUntilDoneAndClear(futures)
-                }
-
-                val row = iter.next()
-
-                futures.add(session.executeAsync(setBytesUnsafe(deleteSPOC.bind(), row)))
-                futures.add(session.executeAsync(setBytesUnsafe(deletePOSC.bind(), row)))
-                futures.add(session.executeAsync(setBytesUnsafe(deleteOSPC.bind(), row)))
-
-                futures.add(session.executeAsync(setBytesUnsafe(deleteCPOS.bind(), row)))
-                futures.add(session.executeAsync(setBytesUnsafe(deleteCOSP.bind(), row)))
-                futures.add(session.executeAsync(setBytesUnsafe(deleteCSPO.bind(), row)))
+                        session.executeAsync(setBytesUnsafe(deleteCPOS.bind(), it)),
+                        session.executeAsync(setBytesUnsafe(deleteCOSP.bind(), it)),
+                        session.executeAsync(setBytesUnsafe(deleteCSPO.bind(), it))
+                )
             }
-
-            waitUntilDone(futures)
         }
     }
 
@@ -389,7 +379,7 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
     }
 
     private fun addStatementInternal(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?)
-        : ListenableFuture<List<ResultSet>> {
+            : ListenableFuture<List<ResultSet>> {
         val indexes = mutableListOf<ResultSetFuture>()
 
         indexes.add(insertInSPOC(subj, pred, obj, context ?: ScyllaRDFSchema.CONTEXT_DEFAULT))

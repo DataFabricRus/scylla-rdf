@@ -30,6 +30,10 @@ internal abstract class AbstractScyllaRDFDAO {
         futures.clear()
     }
 
+    protected fun waitUntilDone(vararg futures: ListenableFuture<*>) {
+        futures.forEach { Uninterruptibles.getUninterruptibly(it) }
+    }
+
     protected fun waitUntilDone(futures: Collection<ListenableFuture<*>>) {
         futures.forEach { Uninterruptibles.getUninterruptibly(it) }
     }
