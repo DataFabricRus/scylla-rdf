@@ -5,9 +5,9 @@ import org.eclipse.rdf4j.model.impl.SimpleValueFactory
 import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.eclipse.rdf4j.model.vocabulary.RDFS
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
-import kotlin.test.assertNull
 
 class IRIFromKnownVocabularyCoderTest {
 

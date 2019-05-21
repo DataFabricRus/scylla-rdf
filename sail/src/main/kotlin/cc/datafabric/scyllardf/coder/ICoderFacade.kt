@@ -12,25 +12,25 @@ import org.eclipse.rdf4j.model.Value
 import org.eclipse.rdf4j.sail.SailException
 import java.nio.ByteBuffer
 
-public interface ICoderFacade {
+interface ICoderFacade {
 
-    public fun encode(values: Array<out Resource?>): List<ByteBuffer?>
+    fun encode(values: Array<out Resource?>): List<ByteBuffer?>
 
-    public fun encode(value: Resource?): ByteBuffer?
+    fun encode(value: Resource?): ByteBuffer?
 
-    public fun encode(value: Value?): ByteBuffer?
+    fun encode(value: Value?): ByteBuffer?
 
-    public fun encode(value: IRI?): ByteBuffer?
+    fun encode(value: IRI?): ByteBuffer?
 
-    public fun encode(value: BNode): ByteBuffer
+    fun encode(value: BNode): ByteBuffer
 
-    public fun encode(value: Literal): ByteBuffer
+    fun encode(value: Literal): ByteBuffer
 
-    public fun encode(stmt: Statement): Array<ByteBuffer>
+    fun encode(stmt: Statement): Array<ByteBuffer>
 
-    public fun decode(hash: ByteBuffer): Value
+    fun decode(hash: ByteBuffer): Value
 
-    public fun decode(spoc: Array<ByteBuffer>): Statement
+    fun decode(spoc: Array<ByteBuffer>): Statement
 
     fun toStatementIteration(origin: SPOCIteration): CloseableIteration<Statement, SailException>
 

@@ -27,7 +27,7 @@ import org.eclipse.rdf4j.model.vocabulary.RDF
 import org.eclipse.rdf4j.sail.SailException
 import java.nio.ByteBuffer
 
-public class CoderFacade : ICoderFacade {
+class CoderFacade : ICoderFacade {
 
     private lateinit var iriCoders: Array<ICoder<IRI>>
     private lateinit var bnodeCoders: Array<ICoder<BNode>>

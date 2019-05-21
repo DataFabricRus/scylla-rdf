@@ -1,11 +1,6 @@
 package cc.datafabric.scyllardf.dao.impl
 
-import cc.datafabric.scyllardf.dao.IIndexDAO
-import cc.datafabric.scyllardf.dao.MultipleResultSetFutureIteration
-import cc.datafabric.scyllardf.dao.ResultSetFutureIteration
-import cc.datafabric.scyllardf.dao.SPOCIteration
-import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
-import cc.datafabric.scyllardf.dao.TransformRowIteration
+import cc.datafabric.scyllardf.dao.*
 import com.datastax.driver.core.PreparedStatement
 import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.ResultSetFuture
@@ -25,85 +20,111 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
     private lateinit var prepClearNamespaces: PreparedStatement
     private lateinit var prepDeleteNamespace: PreparedStatement
 
-    private lateinit var prepSelect_SPOC_S: PreparedStatement
-    private lateinit var prepSelect_SPOC_SP: PreparedStatement
-    private lateinit var prepSelect_SPOC_SPO: PreparedStatement
-    private lateinit var prepSelect_SPOC_ALL: PreparedStatement
-    private lateinit var prepSelect_POSC_P: PreparedStatement
-    private lateinit var prepSelect_POSC_PO: PreparedStatement
-    private lateinit var prepSelect_OSPC_O: PreparedStatement
-    private lateinit var prepSelect_OSPC_OS: PreparedStatement
-    private lateinit var prepSelect_CSPO_CS: PreparedStatement
-    private lateinit var prepSelect_CSPO_CSP: PreparedStatement
-    private lateinit var prepSelect_CSPO_CSPO: PreparedStatement
-    private lateinit var prepSelect_CSPO_C: PreparedStatement
-    private lateinit var prepSelect_CPOS_CP: PreparedStatement
-    private lateinit var prepSelect_CPOS_CPO: PreparedStatement
-    private lateinit var prepSelect_COSP_CO: PreparedStatement
-    private lateinit var prepSelect_COSP_COS: PreparedStatement
+    private lateinit var selectSPOCByS: PreparedStatement
+    private lateinit var selectSPOCBySP: PreparedStatement
+    private lateinit var selectSPOCBySPO: PreparedStatement
+    private lateinit var selectSPOC: PreparedStatement
+    private lateinit var selectPOSCByP: PreparedStatement
+    private lateinit var selectPOSCByPO: PreparedStatement
+    private lateinit var selectOSPCByO: PreparedStatement
+    private lateinit var selectOSPCByOS: PreparedStatement
+    private lateinit var selectCSPOByCS: PreparedStatement
+    private lateinit var selectCSPOByCSP: PreparedStatement
+    private lateinit var selectCSPOByCSPO: PreparedStatement
+    private lateinit var selectCSPOByC: PreparedStatement
+    private lateinit var selectCPOSByCP: PreparedStatement
+    private lateinit var selectCPOSByCPO: PreparedStatement
+    private lateinit var selectCOSPByCO: PreparedStatement
+    private lateinit var selectCOSPByCOS: PreparedStatement
 
-    private lateinit var prepInsertSPOC: PreparedStatement
-    private lateinit var prepInsertPOSC: PreparedStatement
-    private lateinit var prepInsertOSPC: PreparedStatement
-    private lateinit var prepInsertCSPO: PreparedStatement
-    private lateinit var prepInsertCPOS: PreparedStatement
-    private lateinit var prepInsertCOSP: PreparedStatement
+    private lateinit var insertSPOC: PreparedStatement
+    private lateinit var insertPOSC: PreparedStatement
+    private lateinit var insertOSPC: PreparedStatement
+    private lateinit var insertCSPO: PreparedStatement
+    private lateinit var insertCPOS: PreparedStatement
+    private lateinit var insertCOSP: PreparedStatement
 
-    private lateinit var prepDeleteSPOC: PreparedStatement
-    private lateinit var prepDeletePOSC: PreparedStatement
-    private lateinit var prepDeleteOSPC: PreparedStatement
-    private lateinit var prepDeleteCSPO: PreparedStatement
-    private lateinit var prepDeleteCPOS: PreparedStatement
-    private lateinit var prepDeleteCOSP: PreparedStatement
+    private lateinit var deleteSPOC: PreparedStatement
+    private lateinit var deletePOSC: PreparedStatement
+    private lateinit var deleteOSPC: PreparedStatement
+    private lateinit var deleteCSPO: PreparedStatement
+    private lateinit var deleteCPOS: PreparedStatement
+    private lateinit var deleteCOSP: PreparedStatement
 
     override fun insertInSPOC(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
-        return session.executeAsync(setBytesUnsafe(prepInsertSPOC.bind(), subj, pred, obj, context))
+        return session.executeAsync(setBytesUnsafe(insertSPOC.bind(), subj, pred, obj, context))
     }
 
     override fun insertInPOSC(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
-        return session.executeAsync(setBytesUnsafe(prepInsertPOSC.bind(), pred, obj, subj, context))
+        return session.executeAsync(setBytesUnsafe(insertPOSC.bind(), pred, obj, subj, context))
     }
 
     override fun insertInOSPC(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
-        return session.executeAsync(setBytesUnsafe(prepInsertOSPC.bind(), obj, subj, pred, context))
+        return session.executeAsync(setBytesUnsafe(insertOSPC.bind(), obj, subj, pred, context))
     }
 
     override fun insertInCSPO(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
-        return session.executeAsync(setBytesUnsafe(prepInsertCSPO.bind(), context, subj, pred, obj))
+        return session.executeAsync(setBytesUnsafe(insertCSPO.bind(), context, subj, pred, obj))
     }
 
     override fun insertInCPOS(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
-        return session.executeAsync(setBytesUnsafe(prepInsertCPOS.bind(), context, pred, obj, subj))
+        return session.executeAsync(setBytesUnsafe(insertCPOS.bind(), context, pred, obj, subj))
     }
 
     override fun insertInCOSP(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer): ResultSetFuture {
-        return session.executeAsync(setBytesUnsafe(prepInsertCOSP.bind(), context, obj, subj, pred))
+        return session.executeAsync(setBytesUnsafe(insertCOSP.bind(), context, obj, subj, pred))
     }
 
     override fun getContextIDs(): CloseableIteration<ByteBuffer, SailException> {
         return TransformRowIteration(session.executeAsync(prepGetContextIds.bind()),
-            { row -> row.getBytesUnsafe(0) },
-            { value -> value != ScyllaRDFSchema.CONTEXT_DEFAULT })
+                { row -> row.getBytesUnsafe(0) },
+                { value -> value != ScyllaRDFSchema.CONTEXT_DEFAULT })
     }
 
     /**
-     * If context is null or refers to the default graph, then absolutely all triples are removed.
-     * Otherwise, only triples in the given graph are removed.
+     * If context is null or refers to the default graph, then absolutely all triples are removed. Otherwise,
+     * only triples in the given graph are removed.
      */
     override fun clearContext(context: ByteBuffer?) {
         if (context == null || context == ScyllaRDFSchema.CONTEXT_DEFAULT) {
+            clearAllContexts()
+        } else {
+            val rs = session.execute(setBytesUnsafe(selectCSPOByC.bind(), context))
+            val iter = rs.iterator()
             val futures = mutableListOf<ResultSetFuture>()
 
-            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.S_POC}"))
-            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.P_OSC}"))
-            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.O_SPC}"))
+            while (iter.hasNext()) {
+                if (rs.availableWithoutFetching == 0) {
+                    waitUntilDoneAndClear(futures)
+                }
 
-            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CS_PO}"))
-            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CP_OS}"))
-            futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CO_SP}"))
+                val row = iter.next()
 
-            Futures.allAsList(futures).get()
+                futures.add(session.executeAsync(setBytesUnsafe(deleteSPOC.bind(), row)))
+                futures.add(session.executeAsync(setBytesUnsafe(deletePOSC.bind(), row)))
+                futures.add(session.executeAsync(setBytesUnsafe(deleteOSPC.bind(), row)))
+
+                futures.add(session.executeAsync(setBytesUnsafe(deleteCPOS.bind(), row)))
+                futures.add(session.executeAsync(setBytesUnsafe(deleteCOSP.bind(), row)))
+                futures.add(session.executeAsync(setBytesUnsafe(deleteCSPO.bind(), row)))
+            }
+
+            waitUntilDone(futures)
         }
+    }
+
+    private fun clearAllContexts() {
+        val futures = mutableListOf<ResultSetFuture>()
+
+        futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.S_POC}"))
+        futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.P_OSC}"))
+        futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.O_SPC}"))
+
+        futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CS_PO}"))
+        futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CP_OS}"))
+        futures.add(session.executeAsync("TRUNCATE TABLE ${ScyllaRDFSchema.Table.CO_SP}"))
+
+        waitUntilDone(futures)
     }
 
     override fun getNamespaces(): CloseableIteration<Array<String>, SailException> {
@@ -139,10 +160,9 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
     }
 
     override fun addStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>) {
-        val batches = contexts
-            .map { addStatementInternal(subj, pred, obj, it) }
+        val batches = contexts.map { addStatementInternal(subj, pred, obj, it) }
 
-        Futures.allAsList(batches).get()
+        waitUntilDone(batches)
     }
 
     override fun removeStatements(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>) {
@@ -151,14 +171,14 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
         contexts.forEach {
             val c = it ?: ScyllaRDFSchema.CONTEXT_DEFAULT
 
-            futures.add(session.executeAsync(setBytesUnsafe(prepDeleteSPOC.bind(), subj, pred, obj, c)))
-            futures.add(session.executeAsync(setBytesUnsafe(prepDeletePOSC.bind(), pred, obj, subj, c)))
-            futures.add(session.executeAsync(setBytesUnsafe(prepDeleteOSPC.bind(), obj, subj, pred, c)))
+            futures.add(session.executeAsync(setBytesUnsafe(deleteSPOC.bind(), subj, pred, obj, c)))
+            futures.add(session.executeAsync(setBytesUnsafe(deletePOSC.bind(), pred, obj, subj, c)))
+            futures.add(session.executeAsync(setBytesUnsafe(deleteOSPC.bind(), obj, subj, pred, c)))
 
             if (it != null) {
-                futures.add(session.executeAsync(setBytesUnsafe(prepDeleteCSPO.bind(), c, subj, pred, obj)))
-                futures.add(session.executeAsync(setBytesUnsafe(prepDeleteCPOS.bind(), c, pred, obj, subj)))
-                futures.add(session.executeAsync(setBytesUnsafe(prepDeleteCOSP.bind(), c, obj, subj, pred)))
+                futures.add(session.executeAsync(setBytesUnsafe(deleteCSPO.bind(), c, subj, pred, obj)))
+                futures.add(session.executeAsync(setBytesUnsafe(deleteCPOS.bind(), c, pred, obj, subj)))
+                futures.add(session.executeAsync(setBytesUnsafe(deleteCOSP.bind(), c, obj, subj, pred)))
             }
 //TODO:
 //            futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatC.bind(), c)))
@@ -170,7 +190,7 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
 //            futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatSO.bind(), pred, obj)))
         }
 
-        Futures.allAsList(futures).get()
+        waitUntilDone(futures)
     }
 
     override fun getStatements(subj: ByteBuffer?, pred: ByteBuffer?, obj: ByteBuffer?, context: ByteBuffer?): SPOCIteration {
@@ -178,7 +198,7 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
     }
 
     override fun getStatements(subj: ByteBuffer?, pred: ByteBuffer?, obj: ByteBuffer?, contexts: List<ByteBuffer?>)
-        : SPOCIteration {
+            : SPOCIteration {
         return SPOCIteration(MultipleResultSetFutureIteration(contexts.map {
             querySPOC(subj, pred, obj, it)
         }))
@@ -186,29 +206,32 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
 
     internal fun createTables() {
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.S_POC} (" +
-            "subject blob, predicate blob, object blob, context blob, " +
-            "PRIMARY KEY (subject, predicate, object, context))")
+                "subject blob, predicate blob, object blob, context blob, " +
+                "PRIMARY KEY (subject, predicate, object, context))")
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.P_OSC} (" +
-            "predicate blob, object blob, subject blob, context blob, " +
-            "PRIMARY KEY (predicate, object, subject, context))")
+                "predicate blob, object blob, subject blob, context blob, " +
+                "PRIMARY KEY (predicate, object, subject, context))")
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.O_SPC} (" +
-            "object blob, subject blob, predicate blob, context blob, " +
-            "PRIMARY KEY (object, subject, predicate, context))")
+                "object blob, subject blob, predicate blob, context blob, " +
+                "PRIMARY KEY (object, subject, predicate, context))")
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CS_PO} (" +
-            "context blob, subject blob, predicate blob, object blob, " +
-            "PRIMARY KEY ((context, subject), predicate, object))")
+                "context blob, subject blob, predicate blob, object blob, " +
+                "PRIMARY KEY ((context, subject), predicate, object))")
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CP_OS} (" +
-            "context blob, predicate blob, object blob, subject blob, " +
-            "PRIMARY KEY ((context, predicate), object, subject))")
+                "context blob, predicate blob, object blob, subject blob, " +
+                "PRIMARY KEY ((context, predicate), object, subject))")
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CO_SP} (" +
-            "context blob, object blob, subject blob, predicate blob, " +
-            "PRIMARY KEY ((context, object), subject, predicate))")
+                "context blob, object blob, subject blob, predicate blob, " +
+                "PRIMARY KEY ((context, object), subject, predicate))")
 
         /**
          * Table for namespaces
          */
         session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.NS} " +
-            "(prefix text, name text, PRIMARY KEY(prefix))")
+                "(prefix text, name text, PRIMARY KEY(prefix))")
+
+        session.execute("CREATE TABLE IF NOT EXISTS ${ScyllaRDFSchema.Table.CARD_C} " +
+                "(id blob PRIMARY KEY, counter counter)")
     }
 
     internal fun prepareStatements() {
@@ -220,115 +243,115 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
         prepClearNamespaces = session.prepare("TRUNCATE TABLE ${ScyllaRDFSchema.Table.NS}")
         prepDeleteNamespace = session.prepare("DELETE name FROM ${ScyllaRDFSchema.Table.NS} WHERE prefix = ?")
 
-        prepInsertSPOC = session.prepare(
-            "INSERT INTO ${ScyllaRDFSchema.Table.S_POC} (subject, predicate, object, context) " +
-                "VALUES (?, ?, ?, ?)")
-        prepInsertPOSC = session.prepare(
-            "INSERT INTO ${ScyllaRDFSchema.Table.P_OSC} (predicate, object, subject, context) " +
-                "VALUES (?, ?, ?, ?)")
-        prepInsertOSPC = session.prepare(
-            "INSERT INTO ${ScyllaRDFSchema.Table.O_SPC} (object, subject, predicate, context) " +
-                "VALUES (?, ?, ?, ?)")
-        prepInsertCSPO = session.prepare(
-            "INSERT INTO ${ScyllaRDFSchema.Table.CS_PO} (context, subject, predicate, object) " +
-                "VALUES (?, ?, ?, ?)")
-        prepInsertCPOS = session.prepare(
-            "INSERT INTO ${ScyllaRDFSchema.Table.CP_OS} (context, predicate, object, subject) " +
-                "VALUES (?, ?, ?, ?)")
-        prepInsertCOSP = session.prepare(
-            "INSERT INTO ${ScyllaRDFSchema.Table.CO_SP} (context, object, subject, predicate) " +
-                "VALUES (?, ?, ?, ?)")
+        insertSPOC = session.prepare(
+                "INSERT INTO ${ScyllaRDFSchema.Table.S_POC} (subject, predicate, object, context) " +
+                        "VALUES (?, ?, ?, ?)")
+        insertPOSC = session.prepare(
+                "INSERT INTO ${ScyllaRDFSchema.Table.P_OSC} (predicate, object, subject, context) " +
+                        "VALUES (?, ?, ?, ?)")
+        insertOSPC = session.prepare(
+                "INSERT INTO ${ScyllaRDFSchema.Table.O_SPC} (object, subject, predicate, context) " +
+                        "VALUES (?, ?, ?, ?)")
+        insertCSPO = session.prepare(
+                "INSERT INTO ${ScyllaRDFSchema.Table.CS_PO} (context, subject, predicate, object) " +
+                        "VALUES (?, ?, ?, ?)")
+        insertCPOS = session.prepare(
+                "INSERT INTO ${ScyllaRDFSchema.Table.CP_OS} (context, predicate, object, subject) " +
+                        "VALUES (?, ?, ?, ?)")
+        insertCOSP = session.prepare(
+                "INSERT INTO ${ScyllaRDFSchema.Table.CO_SP} (context, object, subject, predicate) " +
+                        "VALUES (?, ?, ?, ?)")
 
-        prepDeleteSPOC = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.S_POC} WHERE " +
-            "subject = ? AND predicate = ? AND object = ? AND context = ?")
-        prepDeletePOSC = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.P_OSC} WHERE " +
-            "predicate = ? AND object = ? AND subject = ? AND context = ?")
-        prepDeleteOSPC = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.O_SPC} WHERE " +
-            "object = ? AND subject = ? AND predicate = ? AND context = ?")
-        prepDeleteCSPO = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.CS_PO} WHERE " +
-            "context = ? AND subject = ? AND predicate = ? AND object = ?")
-        prepDeleteCPOS = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.CP_OS} WHERE " +
-            "context = ? AND predicate = ? AND object = ? AND subject = ?")
-        prepDeleteCOSP = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.CO_SP} WHERE " +
-            "context = ? AND object = ? AND subject = ? AND predicate = ?")
+        deleteSPOC = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.S_POC} WHERE " +
+                "subject = ? AND predicate = ? AND object = ? AND context = ?")
+        deletePOSC = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.P_OSC} WHERE " +
+                "predicate = ? AND object = ? AND subject = ? AND context = ?")
+        deleteOSPC = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.O_SPC} WHERE " +
+                "object = ? AND subject = ? AND predicate = ? AND context = ?")
+        deleteCSPO = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.CS_PO} WHERE " +
+                "context = ? AND subject = ? AND predicate = ? AND object = ?")
+        deleteCPOS = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.CP_OS} WHERE " +
+                "context = ? AND predicate = ? AND object = ? AND subject = ?")
+        deleteCOSP = session.prepare("DELETE FROM ${ScyllaRDFSchema.Table.CO_SP} WHERE " +
+                "context = ? AND object = ? AND subject = ? AND predicate = ?")
 
-        prepSelect_SPOC_S = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.S_POC} " +
-            "WHERE subject = ?")
-        prepSelect_SPOC_SP = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.S_POC} " +
-            "WHERE subject = ? AND predicate = ?")
-        prepSelect_SPOC_SPO = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.S_POC} " +
-            "WHERE subject = ? AND predicate = ? AND object = ?")
-        prepSelect_SPOC_ALL = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.S_POC}")
-        prepSelect_POSC_PO = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.P_OSC} " +
-            "WHERE predicate = ? AND object = ?")
-        prepSelect_POSC_P = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.P_OSC} " +
-            "WHERE predicate = ?")
-        prepSelect_OSPC_OS = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.O_SPC} " +
-            "WHERE object = ? AND subject = ?")
-        prepSelect_OSPC_O = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.O_SPC} " +
-            "WHERE object = ?")
-        prepSelect_CSPO_CS = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.CS_PO} " +
-            "WHERE context = ? AND subject = ?")
-        prepSelect_CSPO_CSP = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.CS_PO} " +
-            "WHERE context = ? AND subject = ? AND predicate = ?")
-        prepSelect_CSPO_CSPO = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.CS_PO} " +
-            "WHERE context = ? AND subject = ? AND predicate = ? AND object = ?")
-        prepSelect_CPOS_CP = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.CP_OS} " +
-            "WHERE context = ? AND predicate = ? AND object = ?")
-        prepSelect_CPOS_CPO = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.CP_OS} " +
-            "WHERE context = ? AND predicate = ? AND object = ? AND subject = ?")
-        prepSelect_COSP_CO = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.CO_SP} " +
-            "WHERE context = ? AND object = ? AND subject = ? AND predicate = ?")
-        prepSelect_COSP_COS = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.CO_SP} " +
-            "WHERE context = ? AND object = ? AND subject = ?")
-        prepSelect_CSPO_C = session.prepare("SELECT subject, predicate, object, context " +
-            "FROM ${ScyllaRDFSchema.Table.CS_PO} WHERE context = ? ALLOW FILTERING")
+        selectSPOCByS = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.S_POC} " +
+                "WHERE subject = ?")
+        selectSPOCBySP = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.S_POC} " +
+                "WHERE subject = ? AND predicate = ?")
+        selectSPOCBySPO = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.S_POC} " +
+                "WHERE subject = ? AND predicate = ? AND object = ?")
+        selectSPOC = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.S_POC}")
+        selectPOSCByPO = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.P_OSC} " +
+                "WHERE predicate = ? AND object = ?")
+        selectPOSCByP = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.P_OSC} " +
+                "WHERE predicate = ?")
+        selectOSPCByOS = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.O_SPC} " +
+                "WHERE object = ? AND subject = ?")
+        selectOSPCByO = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.O_SPC} " +
+                "WHERE object = ?")
+        selectCSPOByCS = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.CS_PO} " +
+                "WHERE context = ? AND subject = ?")
+        selectCSPOByCSP = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.CS_PO} " +
+                "WHERE context = ? AND subject = ? AND predicate = ?")
+        selectCSPOByCSPO = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.CS_PO} " +
+                "WHERE context = ? AND subject = ? AND predicate = ? AND object = ?")
+        selectCPOSByCP = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.CP_OS} " +
+                "WHERE context = ? AND predicate = ? AND object = ?")
+        selectCPOSByCPO = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.CP_OS} " +
+                "WHERE context = ? AND predicate = ? AND object = ? AND subject = ?")
+        selectCOSPByCO = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.CO_SP} " +
+                "WHERE context = ? AND object = ? AND subject = ? AND predicate = ?")
+        selectCOSPByCOS = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.CO_SP} " +
+                "WHERE context = ? AND object = ? AND subject = ?")
+        selectCSPOByC = session.prepare("SELECT subject, predicate, object, context " +
+                "FROM ${ScyllaRDFSchema.Table.CS_PO} WHERE context = ? ALLOW FILTERING")
     }
 
     private fun querySPOC(subj: ByteBuffer?, pred: ByteBuffer?, obj: ByteBuffer?, context: ByteBuffer?)
-        : ResultSetFuture {
+            : ResultSetFuture {
         return if (context == null) {
             if (subj == null) {
                 if (pred == null) {
                     if (obj == null) {
-                        session.executeAsync(prepSelect_SPOC_ALL.bind())
+                        session.executeAsync(selectSPOC.bind())
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_OSPC_O.bind(), obj))
+                        session.executeAsync(setBytesUnsafe(selectOSPCByO.bind(), obj))
                     }
                 } else {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_POSC_P.bind(), pred))
+                        session.executeAsync(setBytesUnsafe(selectPOSCByP.bind(), pred))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_POSC_PO.bind(), pred, obj))
+                        session.executeAsync(setBytesUnsafe(selectPOSCByPO.bind(), pred, obj))
                     }
                 }
             } else {
                 if (pred == null) {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_SPOC_S.bind(), subj))
+                        session.executeAsync(setBytesUnsafe(selectSPOCByS.bind(), subj))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_OSPC_OS.bind(), obj, subj))
+                        session.executeAsync(setBytesUnsafe(selectOSPCByOS.bind(), obj, subj))
                     }
                 } else {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_SPOC_SP.bind(), subj, pred))
+                        session.executeAsync(setBytesUnsafe(selectSPOCBySP.bind(), subj, pred))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_SPOC_SPO.bind(), subj, pred, obj))
+                        session.executeAsync(setBytesUnsafe(selectSPOCBySPO.bind(), subj, pred, obj))
                     }
                 }
             }
@@ -336,29 +359,29 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
             if (subj == null) {
                 if (pred == null) {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_C.bind(), context))
+                        session.executeAsync(setBytesUnsafe(selectCSPOByC.bind(), context))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_COSP_CO.bind(), context, obj))
+                        session.executeAsync(setBytesUnsafe(selectCOSPByCO.bind(), context, obj))
                     }
                 } else {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CPOS_CP.bind(), context, pred))
+                        session.executeAsync(setBytesUnsafe(selectCPOSByCP.bind(), context, pred))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CPOS_CPO.bind(), context, pred, obj))
+                        session.executeAsync(setBytesUnsafe(selectCPOSByCPO.bind(), context, pred, obj))
                     }
                 }
             } else {
                 if (pred == null) {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_CS.bind(), context, subj))
+                        session.executeAsync(setBytesUnsafe(selectCSPOByCS.bind(), context, subj))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_COSP_COS.bind(), context, obj, subj))
+                        session.executeAsync(setBytesUnsafe(selectCOSPByCOS.bind(), context, obj, subj))
                     }
                 } else {
                     if (obj == null) {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_CSP.bind(), context, subj, pred))
+                        session.executeAsync(setBytesUnsafe(selectCSPOByCSP.bind(), context, subj, pred))
                     } else {
-                        session.executeAsync(setBytesUnsafe(prepSelect_CSPO_CSPO.bind(), context, subj, pred, obj))
+                        session.executeAsync(setBytesUnsafe(selectCSPOByCSPO.bind(), context, subj, pred, obj))
                     }
                 }
             }
@@ -367,10 +390,11 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
 
     private fun addStatementInternal(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?)
         : ListenableFuture<List<ResultSet>> {
-        val indexes = ArrayList<ResultSetFuture>(3)
-        indexes.add(insertInSPOC(subj, pred, obj, ScyllaRDFSchema.CONTEXT_DEFAULT))
-        indexes.add(insertInPOSC(subj, pred, obj, ScyllaRDFSchema.CONTEXT_DEFAULT))
-        indexes.add(insertInOSPC(subj, pred, obj, ScyllaRDFSchema.CONTEXT_DEFAULT))
+        val indexes = mutableListOf<ResultSetFuture>()
+
+        indexes.add(insertInSPOC(subj, pred, obj, context ?: ScyllaRDFSchema.CONTEXT_DEFAULT))
+        indexes.add(insertInPOSC(subj, pred, obj, context ?: ScyllaRDFSchema.CONTEXT_DEFAULT))
+        indexes.add(insertInOSPC(subj, pred, obj, context ?: ScyllaRDFSchema.CONTEXT_DEFAULT))
 
         if (context != null) {
             indexes.add(insertInCSPO(subj, pred, obj, context))

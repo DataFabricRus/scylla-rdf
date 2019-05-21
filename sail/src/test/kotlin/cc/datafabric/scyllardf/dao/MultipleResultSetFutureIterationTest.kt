@@ -1,12 +1,9 @@
 package cc.datafabric.scyllardf.dao
 
-import cc.datafabric.scyllardf.TestUtils
 import cc.datafabric.scyllardf.TestUtils.createResultSetFuture
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class MultipleResultSetFutureIterationTest {
 
@@ -21,8 +18,8 @@ class MultipleResultSetFutureIterationTest {
     @Test
     fun testNonEmpty() {
         val iteration = MultipleResultSetFutureIteration(arrayListOf(
-            createResultSetFuture(arrayOf("1", "2")),
-            createResultSetFuture(arrayOf("3", "4"))
+                createResultSetFuture(arrayOf("1", "2")),
+                createResultSetFuture(arrayOf("3", "4"))
         ))
 
         assertTrue { iteration.hasNext() }

@@ -3,11 +3,7 @@ package cc.datafabric.scyllardf.sail
 import cc.datafabric.scyllardf.dao.ICardinalityDAO
 import cc.datafabric.scyllardf.dao.IIndexDAO
 import org.eclipse.rdf4j.common.iteration.CloseableIteration
-import org.eclipse.rdf4j.model.IRI
-import org.eclipse.rdf4j.model.Namespace
-import org.eclipse.rdf4j.model.Resource
-import org.eclipse.rdf4j.model.Statement
-import org.eclipse.rdf4j.model.Value
+import org.eclipse.rdf4j.model.*
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory
 import org.eclipse.rdf4j.query.BindingSet
 import org.eclipse.rdf4j.query.Dataset
@@ -22,10 +18,10 @@ import org.eclipse.rdf4j.sail.helpers.NotifyingSailConnectionBase
 import org.slf4j.LoggerFactory
 
 class ScyllaRDFSailConnection(
-    private val sail: ScyllaRDFSail,
-    private val indexDao: IIndexDAO,
-    private val cardinalityDao: ICardinalityDAO,
-    private val cardinalityEstimationEnabled: Boolean
+        private val sail: ScyllaRDFSail,
+        private val indexDao: IIndexDAO,
+        private val cardinalityDao: ICardinalityDAO,
+        private val cardinalityEstimationEnabled: Boolean
 ) : NotifyingSailConnectionBase(sail) {
 
     companion object {
@@ -114,27 +110,27 @@ class ScyllaRDFSailConnection(
     }
 
     override fun getStatementsInternal(
-        subj: Resource?, pred: IRI?, obj: Value?, includeInferred: Boolean, vararg contexts: Resource?
+            subj: Resource?, pred: IRI?, obj: Value?, includeInferred: Boolean, vararg contexts: Resource?
     ): CloseableIteration<out Statement, SailException> {
         return if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
             sail.getCoder().toStatementIteration(indexDao.getStatements(
-                sail.getCoder().encode(subj),
-                sail.getCoder().encode(pred),
-                sail.getCoder().encode(obj),
-                null
+                    sail.getCoder().encode(subj),
+                    sail.getCoder().encode(pred),
+                    sail.getCoder().encode(obj),
+                    null
             ))
         } else {
             sail.getCoder().toStatementIteration(indexDao.getStatements(
-                sail.getCoder().encode(subj),
-                sail.getCoder().encode(pred),
-                sail.getCoder().encode(obj),
-                sail.getCoder().encode(contexts)
+                    sail.getCoder().encode(subj),
+                    sail.getCoder().encode(pred),
+                    sail.getCoder().encode(obj),
+                    sail.getCoder().encode(contexts)
             ))
         }
     }
 
     override fun evaluateInternal(
-        tupleExpr: TupleExpr, dataset: Dataset?, bindings: BindingSet, includeInferred: Boolean
+            tupleExpr: TupleExpr, dataset: Dataset?, bindings: BindingSet, includeInferred: Boolean
     ): CloseableIteration<out BindingSet, QueryEvaluationException> {
         val expr = if (tupleExpr !is QueryRoot) {
             QueryRoot(tupleExpr);
@@ -169,19 +165,25 @@ class ScyllaRDFSailConnection(
             cardinalityDao.numTriples()
         } else {
             contexts.filterNotNull()
-                .stream()
-                .map { cardinalityDao.contextCardinality(sail.getCoder().encode(it)) }
-                .reduce { a: Long, b: Long -> a + b }
-                .orElse(0)
+                    .stream()
+                    .map { cardinalityDao.contextCardinality(sail.getCoder().encode(it)) }
+                    .reduce { a: Long, b: Long -> a + b }
+                    .orElse(0)
         }
     }
 
     override fun clearInternal(vararg contexts: Resource?) {
         if (contexts.isEmpty()) {
+            // It means the default graph
             indexDao.clearContext(null)
             cardinalityDao.clearContext(null)
         } else {
-            throw SailException("Clearing a non-default context is not supported!")
+            contexts.forEach { context ->
+                sail.getCoder().encode(context).let {
+                    indexDao.clearContext(it)
+                    cardinalityDao.clearContext(it)
+                }
+            }
         }
     }
 

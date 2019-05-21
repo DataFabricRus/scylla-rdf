@@ -1,11 +1,9 @@
 package cc.datafabric.scyllardf.dao
 
 import cc.datafabric.scyllardf.TestUtils.createResultSetFuture
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class TransformResultSetFutureIterationTest {
 
@@ -39,7 +37,7 @@ class TransformResultSetFutureIterationTest {
     fun testWithFilterNonEmptyResult() {
         val future1 = createResultSetFuture(arrayOf("urn:graphs:1", "default"))
         val transformIter1 = TransformRowIteration(future1,
-            { it.getString(0) }, { it != "default" })
+                { it.getString(0) }, { it != "default" })
 
         assertTrue(transformIter1.hasNext())
         assertEquals("urn:graphs:1", transformIter1.next())
@@ -49,7 +47,7 @@ class TransformResultSetFutureIterationTest {
 
         val future2 = createResultSetFuture(arrayOf("default", "urn:graphs:1"))
         val transformIter2 = TransformRowIteration(future2,
-            { it.getString(0) }, { it != "default" })
+                { it.getString(0) }, { it != "default" })
 
         assertTrue(transformIter2.hasNext())
         assertEquals("urn:graphs:1", transformIter2.next())
@@ -62,7 +60,7 @@ class TransformResultSetFutureIterationTest {
     fun testWithFilterEmptyResult() {
         val future = createResultSetFuture(arrayOf("default"))
         val transformIter = TransformRowIteration(future,
-            { it.getString(0) }, { it != "default" })
+                { it.getString(0) }, { it != "default" })
 
         assertFalse(transformIter.hasNext())
         assertThrows<NoSuchElementException> { transformIter.next() }
