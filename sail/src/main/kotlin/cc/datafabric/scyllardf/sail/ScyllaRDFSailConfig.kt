@@ -19,6 +19,7 @@ class ScyllaRDFSailConfig : AbstractSailImplConfig() {
         private val SCYLLA_KEYSPACE = VF.createIRI(NAMESPACE_PREFIX, "keyspace")
         private val SCYLLA_HOSTS = VF.createIRI(NAMESPACE_PREFIX, "hosts")
         private val SCYLLA_PORT = VF.createIRI(NAMESPACE_PREFIX, "port")
+        private val SCYLLA_REPLICATION_FACTOR = VF.createIRI(NAMESPACE_PREFIX, "replicationFactor")
 
         private val SCYLLA_RDF_CARDINALITY_ESTIMATION_ENABLED =
             VF.createIRI(NAMESPACE_PREFIX, "cardinalityEstimationEnabled")
@@ -31,6 +32,7 @@ class ScyllaRDFSailConfig : AbstractSailImplConfig() {
     var scyllaKeyspace: String = "triplestore"
     var scyllaHosts = mutableListOf<InetAddress>()
     var scyllaPort: Int = 9042
+    var scyllaReplicationFactor: Int = 1
 
     var cardinalityEstimationEnabled = false
 
@@ -41,8 +43,9 @@ class ScyllaRDFSailConfig : AbstractSailImplConfig() {
         val implNode = super.export(m)
 
         m.add(implNode, SCYLLA_KEYSPACE, VF.createLiteral(scyllaKeyspace))
+        m.add(implNode, SCYLLA_REPLICATION_FACTOR, VF.createLiteral(scyllaReplicationFactor))
 
-        val scyllaHostsAsString = scyllaHosts.map { it.hostName }.joinToString()
+        val scyllaHostsAsString = scyllaHosts.joinToString { it.hostName }
         m.add(implNode, SCYLLA_HOSTS, VF.createLiteral(scyllaHostsAsString))
 
         m.add(implNode, SCYLLA_PORT, VF.createLiteral(scyllaPort))
@@ -71,6 +74,9 @@ class ScyllaRDFSailConfig : AbstractSailImplConfig() {
             scyllaPort = Models.getPropertyLiteral(m, implNode, SCYLLA_PORT)
                 .orElseThrow { SailConfigException("Scylla Port is required!") }
                 .stringValue().toInt()
+            scyllaReplicationFactor = Models.getPropertyLiteral(m, implNode, SCYLLA_REPLICATION_FACTOR)
+                    .orElseThrow { SailConfigException("Scylla Port is required!") }
+                    .stringValue().toInt()
 
             cardinalityEstimationEnabled = Models
                 .getPropertyLiteral(m, implNode, SCYLLA_RDF_CARDINALITY_ESTIMATION_ENABLED)

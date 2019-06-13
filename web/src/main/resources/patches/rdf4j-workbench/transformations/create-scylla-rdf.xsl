@@ -68,6 +68,13 @@
                         <td></td>
                     </tr>
                     <tr>
+                        <th>Scylla Replication Factor</th>
+                        <td>
+                            <input type="number" id="replicationFactor" name="Scylla Replication Factor" size="48" value="1"/>
+                        </td>
+                        <td></td>
+                    </tr>
+                    <tr>
                         <th>Cardinality Estimation Enabled</th>
                         <td>
                             <input type="checkbox" id="cardinalityEstimationEmabled"

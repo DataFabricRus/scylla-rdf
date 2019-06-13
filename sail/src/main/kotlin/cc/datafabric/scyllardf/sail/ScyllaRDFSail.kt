@@ -21,7 +21,8 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
 
     override fun initializeInternal() {
         try {
-            daoFactory = ScyllaRDFDAOFactory.create(config.scyllaHosts, config.scyllaPort, config.scyllaKeyspace)
+            daoFactory = ScyllaRDFDAOFactory.create(
+                    config.scyllaHosts, config.scyllaPort, config.scyllaKeyspace, config.scyllaReplicationFactor)
 
             coder = CoderFacade()
             coder.initialize(daoFactory.getDictionaryDAO(), true)

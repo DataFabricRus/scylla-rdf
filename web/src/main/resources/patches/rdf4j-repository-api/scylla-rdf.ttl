@@ -20,6 +20,7 @@
          scylla-rdf:keyspace "{%Scylla Keyspace|%}" ;
          scylla-rdf:hosts "{%Scylla Hosts|%}" ;
          scylla-rdf:port "{%Scylla Port|%}" ;
+         scylla-rdf:replicationFactor "{%Scylla Replication Factor|%}" ;
 
          # Scylla-RDF configuration
 

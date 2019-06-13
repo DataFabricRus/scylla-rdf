@@ -22,14 +22,16 @@ import java.io.Closeable
 import java.net.InetAddress
 
 class ScyllaRDFDAOFactory private constructor(
-    private val cluster: Cluster, private val keyspace: String
+    private val cluster: Cluster,
+    private val keyspace: String,
+    private val replicationFactor: Int
 ) : Closeable {
 
     companion object {
         private val LOG = LoggerFactory.getLogger(ScyllaRDFDAOFactory::class.java)
 
-        fun create(hosts: List<InetAddress>, port: Int, keyspace: String): ScyllaRDFDAOFactory {
-            return create(hosts, port, keyspace, PoolingOptions()
+        fun create(hosts: List<InetAddress>, port: Int, keyspace: String, replicationFactor: Int): ScyllaRDFDAOFactory {
+            return create(hosts, port, keyspace, replicationFactor, PoolingOptions()
                 .setMaxRequestsPerConnection(HostDistance.LOCAL, 1024)
                 .setMaxRequestsPerConnection(HostDistance.REMOTE, 256)
             )
@@ -38,6 +40,7 @@ class ScyllaRDFDAOFactory private constructor(
         fun create(
             hosts: List<InetAddress>,
             port: Int, keyspace: String,
+            replicationFactor: Int,
             poolingOptions: PoolingOptions
         ): ScyllaRDFDAOFactory {
             val cluster = Cluster.builder()
@@ -49,7 +52,7 @@ class ScyllaRDFDAOFactory private constructor(
                 .withRetryPolicy(LoggingRetryPolicy(TolerantRetryPolicy()))
                 .build()
 
-            val dao = ScyllaRDFDAOFactory(cluster, keyspace)
+            val dao = ScyllaRDFDAOFactory(cluster, keyspace, replicationFactor)
             dao.initialize()
 
             return dao
@@ -67,7 +70,7 @@ class ScyllaRDFDAOFactory private constructor(
         LOG.info("Scylla cluster supports {} protocol version", protocolVersion)
 
         session.execute("CREATE KEYSPACE IF NOT EXISTS $keyspace " +
-            "WITH replication = { 'class': 'SimpleStrategy', 'replication_factor': 1 }")
+            "WITH replication = { 'class': 'SimpleStrategy', 'replication_factor': $replicationFactor }")
         session.execute("USE $keyspace")
 
         // Cardinality DAO
