@@ -5,7 +5,7 @@ import org.cassandraunit.AbstractCassandraUnit4CQLTestCase
 import org.cassandraunit.dataset.cql.ClassPathCQLDataSet
 import org.eclipse.rdf4j.common.iteration.Iterations
 import org.junit.After
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import java.nio.ByteBuffer
@@ -94,6 +94,21 @@ class ScyllaRDFIndexDAOTest : AbstractCassandraUnit4CQLTestCase() {
         dao.clearContext(graph2)
 
         checkAllTables(0, subj, pred, obj, graph2)
+    }
+
+    @Test
+    fun testSetEmptyNamespace() {
+        val prefix = ""
+        val namespace = "urn:uuid:"
+        dao.setNamespace(prefix, namespace)
+
+        assertEquals(namespace, dao.getNamespace(prefix))
+
+        val pair = dao.getNamespaces().next()
+        assertEquals(prefix, pair[0])
+        assertEquals(namespace, pair[1])
+
+        dao.clearNamespaces()
     }
 
     private fun checkAllTables(expected: Int, subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer) {

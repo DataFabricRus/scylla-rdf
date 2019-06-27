@@ -23,6 +23,8 @@ object ScyllaRDFSchema {
 
     const val CARD_PO_NUM_BUCKETS = 16
 
+    const val EMPTY_PREFIX = "\u0000"
+
     val CONTEXT_DEFAULT = ByteBuffer.wrap(byteArrayOf(0))!!
 
 }

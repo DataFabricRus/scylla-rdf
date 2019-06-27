@@ -1,6 +1,12 @@
 package cc.datafabric.scyllardf.dao.impl
 
-import cc.datafabric.scyllardf.dao.*
+import cc.datafabric.scyllardf.dao.IIndexDAO
+import cc.datafabric.scyllardf.dao.MultipleResultSetFutureIteration
+import cc.datafabric.scyllardf.dao.ResultSetFutureIteration
+import cc.datafabric.scyllardf.dao.SPOCIteration
+import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
+import cc.datafabric.scyllardf.dao.ScyllaRDFSchema.EMPTY_PREFIX
+import cc.datafabric.scyllardf.dao.TransformRowIteration
 import com.datastax.driver.core.PreparedStatement
 import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.ResultSetFuture
@@ -118,13 +124,20 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
     }
 
     override fun getNamespaces(): CloseableIteration<Array<String>, SailException> {
-        return TransformRowIteration(session.executeAsync(prepGetNamespaces.bind())) { row ->
-            arrayOf(row.getString(0), row.getString(1))
+        return TransformRowIteration(session.executeAsync(prepGetNamespaces.bind())) {
+            val prefix = it.getString(0)
+            if (prefix == EMPTY_PREFIX) {
+                arrayOf("", it.getString(1))
+            } else {
+                arrayOf(prefix, it.getString(1))
+            }
         }
     }
 
     override fun getNamespace(prefix: String): String? {
-        val row = session.execute(prepGetNamespace.bind(prefix)).one()
+        val p = if (prefix.isBlank()) EMPTY_PREFIX else prefix
+
+        val row = session.execute(prepGetNamespace.bind(p)).one()
 
         if (row != null) {
             return row.getString(1)
@@ -134,7 +147,9 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
     }
 
     override fun setNamespace(prefix: String, name: String) {
-        session.execute(prepSetNamespace.bind(name, prefix))
+        val p = if (prefix.isBlank()) EMPTY_PREFIX else prefix
+
+        session.execute(prepSetNamespace.bind(name, p))
     }
 
     override fun clearNamespaces() {

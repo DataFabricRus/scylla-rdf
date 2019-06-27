@@ -138,8 +138,6 @@ class ScyllaRDFSailConnection(
             tupleExpr
         }
 
-        val strategy = StrictEvaluationStrategyFactory().createEvaluationStrategy(dataset, tripleSource)
-
         val statistics: EvaluationStatistics = if (cardinalityEstimationEnabled) {
             LOG.debug("The cardinality estimation is used!")
 
@@ -147,6 +145,8 @@ class ScyllaRDFSailConnection(
         } else {
             EvaluationStatistics()
         }
+
+        val strategy = StrictEvaluationStrategyFactory().createEvaluationStrategy(dataset, tripleSource, statistics)
 
         val queryPlanner = ScyllaRDFQueryPlanner(strategy, statistics)
         queryPlanner.optimize(expr, dataset, bindings)
