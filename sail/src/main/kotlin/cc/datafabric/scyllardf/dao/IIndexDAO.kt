@@ -19,9 +19,11 @@ interface IIndexDAO {
     fun setNamespace(prefix: String, name: String)
     fun clearNamespaces()
     fun removeNamespace(prefix: String)
-    fun addStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer)
-    fun addStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>)
-    fun removeStatements(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>)
+    fun addStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?): List<ResultSetFuture>
+    fun addStatementBlocking(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer)
+    fun addStatementBlocking(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>)
+    fun removeStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, vararg context: ByteBuffer?): List<ResultSetFuture>
+    fun removeStatementBlocking(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>)
     fun getStatements(subj: ByteBuffer?, pred: ByteBuffer?, obj: ByteBuffer?, context: ByteBuffer?): SPOCIteration
     fun getStatements(subj: ByteBuffer?, pred: ByteBuffer?, obj: ByteBuffer?, contexts: List<ByteBuffer?>): SPOCIteration
 }

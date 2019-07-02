@@ -67,13 +67,13 @@ class ScyllaRDFSailConnection(
         val o = sail.getCoder().encode(obj)!!
 
         if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
-            indexDao.addStatement(s, p, o)
+            indexDao.addStatementBlocking(s, p, o)
 
             cardinalityDao.incrementCards(s, p, o, null)
         } else {
             val c = sail.getCoder().encode(contexts)
 
-            indexDao.addStatement(s, p, o, c)
+            indexDao.addStatementBlocking(s, p, o, c)
 
             cardinalityDao.incrementCards(s, p, o, c)
         }
@@ -96,12 +96,12 @@ class ScyllaRDFSailConnection(
         val o = sail.getCoder().encode(obj)!!
 
         if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
-            indexDao.removeStatements(s, p, o, listOf(null))
+            indexDao.removeStatementBlocking(s, p, o, listOf(null))
 
             cardinalityDao.decrementCards(s, p, o, null)
         } else {
             val c = sail.getCoder().encode(contexts)
-            indexDao.removeStatements(s, p, o, c)
+            indexDao.removeStatementBlocking(s, p, o, c)
 
             cardinalityDao.decrementCards(s, p, o, c)
         }

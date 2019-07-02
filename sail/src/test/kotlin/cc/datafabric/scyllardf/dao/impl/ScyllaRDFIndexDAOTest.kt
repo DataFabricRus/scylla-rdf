@@ -53,7 +53,7 @@ class ScyllaRDFIndexDAOTest : AbstractCassandraUnit4CQLTestCase() {
 
     @Test
     fun addStatementsIntoDefaultContext() {
-        dao.addStatement(subj, pred, obj)
+        dao.addStatementBlocking(subj, pred, obj)
 
         val iter = dao.getStatements(null, null, null, null)
 
@@ -62,15 +62,15 @@ class ScyllaRDFIndexDAOTest : AbstractCassandraUnit4CQLTestCase() {
 
     @Test
     fun addStatementsIntoNonDefaultContext() {
-        dao.addStatement(subj, pred, obj, listOf(graph1))
+        dao.addStatementBlocking(subj, pred, obj, listOf(graph1))
 
         checkAllTables(1, subj, pred, obj, graph1)
     }
 
     @Test
     fun clearDefaultContext() {
-        dao.addStatement(subj, pred, obj)
-        dao.addStatement(subj, pred, obj, listOf(graph1))
+        dao.addStatementBlocking(subj, pred, obj)
+        dao.addStatementBlocking(subj, pred, obj, listOf(graph1))
 
         checkAllTables(1, subj, pred, obj, ScyllaRDFSchema.CONTEXT_DEFAULT)
         checkAllTables(1, subj, pred, obj, graph1)
@@ -83,9 +83,9 @@ class ScyllaRDFIndexDAOTest : AbstractCassandraUnit4CQLTestCase() {
 
     @Test
     fun clearNonDefaultContext() {
-        dao.addStatement(subj, pred, obj)
-        dao.addStatement(subj, pred, obj, listOf(graph1))
-        dao.addStatement(subj, pred, obj, listOf(graph2))
+        dao.addStatementBlocking(subj, pred, obj)
+        dao.addStatementBlocking(subj, pred, obj, listOf(graph1))
+        dao.addStatementBlocking(subj, pred, obj, listOf(graph2))
 
         assertEquals(3, Iterations.asList(dao.getStatements(null, null, null, null)).size)
 

@@ -57,6 +57,22 @@ class ScyllaRDFDAOFactory private constructor(
 
             return dao
         }
+
+        fun createWithDefaults(
+            hosts: List<InetAddress>,
+            port: Int, keyspace: String,
+            replicationFactor: Int
+        ) : ScyllaRDFDAOFactory {
+            val cluster = Cluster.builder()
+                .addContactPoints(hosts)
+                .withPort(port)
+                .build()
+
+            val dao = ScyllaRDFDAOFactory(cluster, keyspace, replicationFactor)
+            dao.initialize()
+
+            return dao
+        }
     }
 
     private val session: Session = cluster.connect()

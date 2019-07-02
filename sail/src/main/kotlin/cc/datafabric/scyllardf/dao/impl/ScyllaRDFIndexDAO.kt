@@ -8,11 +8,8 @@ import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
 import cc.datafabric.scyllardf.dao.ScyllaRDFSchema.EMPTY_PREFIX
 import cc.datafabric.scyllardf.dao.TransformRowIteration
 import com.datastax.driver.core.PreparedStatement
-import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.ResultSetFuture
 import com.datastax.driver.core.Session
-import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListenableFuture
 import org.eclipse.rdf4j.common.iteration.CloseableIteration
 import org.eclipse.rdf4j.sail.SailException
 import java.nio.ByteBuffer
@@ -160,40 +157,37 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
         session.execute(prepDeleteNamespace.bind(prefix))
     }
 
-    override fun addStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer) {
-        addStatementInternal(subj, pred, obj, null).get()
+    override fun addStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?): List<ResultSetFuture> {
+        return addStatementInternal(subj, pred, obj, context)
     }
 
-    override fun addStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>) {
-        val batches = contexts.map { addStatementInternal(subj, pred, obj, it) }
-
-        waitUntilDone(batches)
+    override fun addStatementBlocking(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer) {
+        waitUntilDoneAndClear(
+                addStatementInternal(subj, pred, obj, null)
+        )
     }
 
-    override fun removeStatements(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>) {
+    override fun addStatementBlocking(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>) {
+        val batch = mutableListOf<ResultSetFuture>()
+
+        contexts.forEach { batch.addAll(addStatementInternal(subj, pred, obj, it)) }
+
+        waitUntilDoneAndClear(batch)
+    }
+
+    override fun removeStatement(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, vararg context: ByteBuffer?)
+            : List<ResultSetFuture> {
         val futures = mutableListOf<ResultSetFuture>()
 
-        contexts.forEach {
-            val c = it ?: ScyllaRDFSchema.CONTEXT_DEFAULT
+        context.forEach { futures.addAll(removeStatementInternal(subj, pred, obj, it)) }
 
-            futures.add(session.executeAsync(setBytesUnsafe(deleteSPOC.bind(), subj, pred, obj, c)))
-            futures.add(session.executeAsync(setBytesUnsafe(deletePOSC.bind(), pred, obj, subj, c)))
-            futures.add(session.executeAsync(setBytesUnsafe(deleteOSPC.bind(), obj, subj, pred, c)))
+        return futures
+    }
 
-            if (it != null) {
-                futures.add(session.executeAsync(setBytesUnsafe(deleteCSPO.bind(), c, subj, pred, obj)))
-                futures.add(session.executeAsync(setBytesUnsafe(deleteCPOS.bind(), c, pred, obj, subj)))
-                futures.add(session.executeAsync(setBytesUnsafe(deleteCOSP.bind(), c, obj, subj, pred)))
-            }
-//TODO:
-//            futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatC.bind(), c)))
-//            futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatS.bind(), subj)))
-//            futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatP.bind(), pred)))
-//            futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatO.bind(), obj)))
-//            futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatSP.bind(), subj, pred)))
-//            futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatPO.bind(), pred, obj)))
-//            futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatSO.bind(), pred, obj)))
-        }
+    override fun removeStatementBlocking(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, contexts: List<ByteBuffer?>) {
+        val futures = mutableListOf<ResultSetFuture>()
+
+        contexts.forEach { futures.addAll(removeStatementInternal(subj, pred, obj, it)) }
 
         waitUntilDone(futures)
     }
@@ -393,21 +387,49 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
         }
     }
 
+    private fun removeStatementInternal(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?)
+            : MutableList<ResultSetFuture> {
+        val futures = mutableListOf<ResultSetFuture>()
+
+        val c = context ?: ScyllaRDFSchema.CONTEXT_DEFAULT
+
+        futures.add(session.executeAsync(setBytesUnsafe(deleteSPOC.bind(), subj, pred, obj, c)))
+        futures.add(session.executeAsync(setBytesUnsafe(deletePOSC.bind(), pred, obj, subj, c)))
+        futures.add(session.executeAsync(setBytesUnsafe(deleteOSPC.bind(), obj, subj, pred, c)))
+
+        if (context != null) {
+            futures.add(session.executeAsync(setBytesUnsafe(deleteCSPO.bind(), c, subj, pred, obj)))
+            futures.add(session.executeAsync(setBytesUnsafe(deleteCPOS.bind(), c, pred, obj, subj)))
+            futures.add(session.executeAsync(setBytesUnsafe(deleteCOSP.bind(), c, obj, subj, pred)))
+        }
+
+        //TODO: https://github.com/DataFabricRus/scylla-rdf/issues/3
+        //futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatC.bind(), c)))
+        //futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatS.bind(), subj)))
+        //futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatP.bind(), pred)))
+        //futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatO.bind(), obj)))
+        //futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatSP.bind(), subj, pred)))
+        //futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatPO.bind(), pred, obj)))
+        //futures.add(session.executeAsync(setBytesUnsafe(prepDecrementStatSO.bind(), pred, obj)))
+
+        return futures
+    }
+
     private fun addStatementInternal(subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer?)
-            : ListenableFuture<List<ResultSet>> {
+            : MutableList<ResultSetFuture> {
         val indexes = mutableListOf<ResultSetFuture>()
 
         indexes.add(insertInSPOC(subj, pred, obj, context ?: ScyllaRDFSchema.CONTEXT_DEFAULT))
         indexes.add(insertInPOSC(subj, pred, obj, context ?: ScyllaRDFSchema.CONTEXT_DEFAULT))
         indexes.add(insertInOSPC(subj, pred, obj, context ?: ScyllaRDFSchema.CONTEXT_DEFAULT))
 
-        if (context != null) {
+        if (context != null && context != ScyllaRDFSchema.CONTEXT_DEFAULT) {
             indexes.add(insertInCSPO(subj, pred, obj, context))
             indexes.add(insertInCPOS(subj, pred, obj, context))
             indexes.add(insertInCOSP(subj, pred, obj, context))
         }
 
-        return Futures.allAsList(indexes)
+        return indexes
     }
 
 }

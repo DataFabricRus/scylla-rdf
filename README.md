@@ -4,10 +4,9 @@ An RDF store (aka [Triplestore](https://en.wikipedia.org/wiki/Triplestore)) buil
 
 > Warning: It's still in an early stage of development, so if you have any trouble or question, please, create an issue.
 
-## Docker Image
 
-[![](https://images.microbadger.com/badges/image/datafabricrus/scylla-rdf:0.0.1.svg)](https://microbadger.com/images/datafabricrus/scylla-rdf:0.0.1 "Get your own image badge on microbadger.com") 
-[![](https://images.microbadger.com/badges/version/datafabricrus/scylla-rdf:0.0.1.svg)](https://microbadger.com/images/datafabricrus/scylla-rdf:0.0.1 "Get your own version badge on microbadger.com")
+Docker Image: [![](https://images.microbadger.com/badges/image/datafabricrus/scylla-rdf:0.0.1.svg)](https://hub.docker.com/r/datafabricrus/scylla-rdf "Get your own image badge on microbadger.com") [![](https://images.microbadger.com/badges/version/datafabricrus/scylla-rdf:0.0.1.svg)](https://hub.docker.com/r/datafabricrus/scylla-rdf "Get your own version badge on microbadger.com")
+
 
 ## Deployment
 
@@ -22,6 +21,21 @@ We use Apache Beam to bulk load RDF data to ScyllaDB. The repository with the pi
 ## Benchmarks
 
 We benchmark new features, the results available in https://github.com/DataFabricRus/scylla-rdf-benchmark.
+
+## Build from sources
+
+The code depends on the SNAPSHOT versions of some libraries, so you need to build them locally and make sure their 
+artifacts end up into the local Maven repository. The libraries:
+
+  * ScyllaDB Java Driver (the fork of Cassandra Java Driver). Use the [3.7.1-scylla](https://github.com/scylladb/java-driver/tree/3.7.1-scylla) branch.
+  * Eclipse RDF4J (i.e. [rdf4j](https://github.com/eclipse/rdf4j), [rdf4j-storage](https://github.com/eclipse/rdf4j-storage) and [rdf4j-tools](https://github.com/eclipse/rdf4j-tools)). Use the `develop` branch.
+
+After that you need to build Scylla-RDF with:
+
+```bash
+$ mvn clean install
+$ docker-compose -f docker-compose-dev.yml build
+```
 
 ## License
 
