@@ -5,18 +5,31 @@ An RDF store (aka [Triplestore](https://en.wikipedia.org/wiki/Triplestore)) buil
 > Warning: It's still in an early stage of development, so if you have any trouble or question, please, create an issue.
 
 
-Docker Image: [![](https://images.microbadger.com/badges/image/datafabricrus/scylla-rdf:0.0.1.svg)](https://hub.docker.com/r/datafabricrus/scylla-rdf "Get your own image badge on microbadger.com") [![](https://images.microbadger.com/badges/version/datafabricrus/scylla-rdf:0.0.1.svg)](https://hub.docker.com/r/datafabricrus/scylla-rdf "Get your own version badge on microbadger.com")
+[![](https://images.microbadger.com/badges/version/datafabricrus/scylla-rdf:0.0.1.svg)](https://hub.docker.com/r/datafabricrus/scylla-rdf "Get your own version badge on microbadger.com")
+[![Build Status](https://travis-ci.org/DataFabricRus/scylla-rdf.svg?branch=master)](https://travis-ci.org/DataFabricRus/scylla-rdf)
 
 
 ## Deployment
 
-For testing purposes deploy ScyllaDB, Elasticsearch and Scylla-RDF using [docker-compose-dev.yml](https://github.com/DataFabricRus/scylla-rdf/blob/master/docker/docker-compose-dev.yml).
+For testing purposes deploy ScyllaDB, Elasticsearch and Scylla-RDF locally using [docker-compose-dev.yml](./docker-compose-dev.yml):
 
-For production, you have to deploy ScyllaDB and Elasticsearch separately. And use [docker-compose-prod.yml](https://github.com/DataFabricRus/scylla-rdf/blob/master/docker/docker-compose-prod.yml) to deploy Scylla-RDF.
+```bash
+$ docker-compose -f docker-compose-dev.yml up -d
+```
+
+For production, you need to deploy ScyllaDB and Elasticsearch separately. And use 
+[docker-compose-prod.yml](./docker-compose-prod.yml) to deploy Scylla-RDF. Scylla-RDF were tested with:
+
+  * ScyllaDB 3.0.8
+  * Elasticsearch 6.5.4
+  
+In both cases, after the deployment, you need to create a repository via the RDF4J Workbench Console which'll be available 
+on 80th port of the machine where Scylla-RDF was deployed, e.g. `http://localhost`. The default login/password: `admin`/`scylla-rdf`.
 
 ## Bulk Loading
 
-We use Apache Beam to bulk load RDF data to ScyllaDB. The repository with the pipelines: https://github.com/DataFabricRus/scylla-beam-pipelines.
+We use [Apache Beam](http://beam.apache.org/) to bulk load RDF data to ScyllaDB. The repository with the source code and instructions: 
+https://github.com/DataFabricRus/scylla-beam-pipelines.
 
 ## Benchmarks
 
