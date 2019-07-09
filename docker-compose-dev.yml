@@ -2,7 +2,7 @@ version: "3"
 services:
   scylladb:
     image: scylladb/scylla:3.0.8
-    command: --smp 2 --memory 2G --overprovisioned 1 --developer-mode 1
+    command: --overprovisioned 1 --developer-mode 1
     ports:
       - 7000-7001:7000-7001
       - 9042:9042
@@ -30,6 +30,8 @@ services:
   scylla-rdf:
     build: ./
     image: datafabricrus/scylla-rdf:0.0.1
+    environment:
+      CATALINA_OPTS: -Xms256m -Xmx512m
     depends_on:
       - scylladb
       - elasticsearch

@@ -1,4 +1,4 @@
-FROM tomcat:9-jre8-alpine
+FROM tomcat:9.0.21-jdk11-openjdk
 
 RUN rm -r $CATALINA_HOME/webapps/*
 
