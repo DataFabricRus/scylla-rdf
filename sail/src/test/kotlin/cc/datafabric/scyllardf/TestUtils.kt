@@ -22,6 +22,7 @@ object TestUtils {
         Mockito.`when`(resultSet.iterator()).thenReturn(iterator)
 
         Mockito.`when`(future.get()).thenReturn(resultSet)
+        Mockito.`when`(future.uninterruptibly).thenReturn(resultSet)
         Mockito.`when`(future.cancel(true)).thenReturn(true)
 
         return future

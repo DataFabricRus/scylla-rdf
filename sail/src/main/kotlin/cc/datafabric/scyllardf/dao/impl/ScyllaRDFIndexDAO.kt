@@ -311,7 +311,7 @@ internal class ScyllaRDFIndexDAO(private val session: Session) : AbstractScyllaR
                 "WHERE context = ? AND predicate = ? AND object = ?")
         selectCPOSByCPO = session.prepare("SELECT subject, predicate, object, context " +
                 "FROM ${ScyllaRDFSchema.Table.CP_OS} " +
-                "WHERE context = ? AND predicate = ? AND object = ? AND subject = ?")
+                "WHERE context = ? AND predicate = ? AND object = ?")
         selectCOSPByCO = session.prepare("SELECT subject, predicate, object, context " +
                 "FROM ${ScyllaRDFSchema.Table.CO_SP} " +
                 "WHERE context = ? AND object = ? AND subject = ? AND predicate = ?")

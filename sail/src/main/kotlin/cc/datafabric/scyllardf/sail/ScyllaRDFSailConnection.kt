@@ -1,5 +1,6 @@
 package cc.datafabric.scyllardf.sail
 
+import cc.datafabric.scyllardf.coder.ICoderFacade
 import cc.datafabric.scyllardf.dao.ICardinalityDAO
 import cc.datafabric.scyllardf.dao.IIndexDAO
 import org.eclipse.rdf4j.common.iteration.CloseableIteration
@@ -14,14 +15,16 @@ import org.eclipse.rdf4j.query.algebra.evaluation.impl.EvaluationStatistics
 import org.eclipse.rdf4j.query.algebra.evaluation.impl.StrictEvaluationStrategyFactory
 import org.eclipse.rdf4j.sail.SailException
 import org.eclipse.rdf4j.sail.evaluation.SailTripleSource
+import org.eclipse.rdf4j.sail.helpers.AbstractSail
 import org.eclipse.rdf4j.sail.helpers.NotifyingSailConnectionBase
 import org.slf4j.LoggerFactory
 
 class ScyllaRDFSailConnection(
-        private val sail: ScyllaRDFSail,
+        sail: AbstractSail,
         private val indexDao: IIndexDAO,
         private val cardinalityDao: ICardinalityDAO,
-        private val cardinalityEstimationEnabled: Boolean
+        private val cardinalityEstimationEnabled: Boolean,
+        private val coder: ICoderFacade
 ) : NotifyingSailConnectionBase(sail) {
 
     companion object {
@@ -50,7 +53,7 @@ class ScyllaRDFSailConnection(
     }
 
     override fun getNamespacesInternal(): CloseableIteration<out Namespace, SailException> {
-        return sail.getCoder().toNamespaceIteration(indexDao.getNamespaces())
+        return coder.toNamespaceIteration(indexDao.getNamespaces())
     }
 
     override fun clearNamespacesInternal() {
@@ -58,20 +61,20 @@ class ScyllaRDFSailConnection(
     }
 
     override fun getContextIDsInternal(): CloseableIteration<out Resource, SailException> {
-        return sail.getCoder().toResourceIteration(indexDao.getContextIDs())
+        return coder.toResourceIteration(indexDao.getContextIDs())
     }
 
     override fun addStatementInternal(subj: Resource, pred: IRI, obj: Value, vararg contexts: Resource?) {
-        val s = sail.getCoder().encode(subj)!!
-        val p = sail.getCoder().encode(pred)!!
-        val o = sail.getCoder().encode(obj)!!
+        val s = coder.encode(subj)!!
+        val p = coder.encode(pred)!!
+        val o = coder.encode(obj)!!
 
         if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
             indexDao.addStatementBlocking(s, p, o)
 
             cardinalityDao.incrementCards(s, p, o, null)
         } else {
-            val c = sail.getCoder().encode(contexts)
+            val c = coder.encode(contexts)
 
             indexDao.addStatementBlocking(s, p, o, c)
 
@@ -91,16 +94,16 @@ class ScyllaRDFSailConnection(
             throw SailException("All subject, predicate and object must be set!")
         }
 
-        val s = sail.getCoder().encode(subj)!!
-        val p = sail.getCoder().encode(pred)!!
-        val o = sail.getCoder().encode(obj)!!
+        val s = coder.encode(subj)!!
+        val p = coder.encode(pred)!!
+        val o = coder.encode(obj)!!
 
         if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
             indexDao.removeStatementBlocking(s, p, o, listOf(null))
 
             cardinalityDao.decrementCards(s, p, o, null)
         } else {
-            val c = sail.getCoder().encode(contexts)
+            val c = coder.encode(contexts)
             indexDao.removeStatementBlocking(s, p, o, c)
 
             cardinalityDao.decrementCards(s, p, o, c)
@@ -113,18 +116,18 @@ class ScyllaRDFSailConnection(
             subj: Resource?, pred: IRI?, obj: Value?, includeInferred: Boolean, vararg contexts: Resource?
     ): CloseableIteration<out Statement, SailException> {
         return if (contexts.isNullOrEmpty() || (contexts.size == 1 && contexts[0] == null)) {
-            sail.getCoder().toStatementIteration(indexDao.getStatements(
-                    sail.getCoder().encode(subj),
-                    sail.getCoder().encode(pred),
-                    sail.getCoder().encode(obj),
+            coder.toStatementIteration(indexDao.getStatements(
+                    coder.encode(subj),
+                    coder.encode(pred),
+                    coder.encode(obj),
                     null
             ))
         } else {
-            sail.getCoder().toStatementIteration(indexDao.getStatements(
-                    sail.getCoder().encode(subj),
-                    sail.getCoder().encode(pred),
-                    sail.getCoder().encode(obj),
-                    sail.getCoder().encode(contexts)
+            coder.toStatementIteration(indexDao.getStatements(
+                    coder.encode(subj),
+                    coder.encode(pred),
+                    coder.encode(obj),
+                    coder.encode(contexts)
             ))
         }
     }
@@ -141,7 +144,7 @@ class ScyllaRDFSailConnection(
         val statistics: EvaluationStatistics = if (cardinalityEstimationEnabled) {
             LOG.debug("The cardinality estimation is used!")
 
-            ScyllaRDFEvaluationStatistics(cardinalityDao.withCache(), sail.getCoder())
+            ScyllaRDFEvaluationStatistics(cardinalityDao.withCache(), coder)
         } else {
             EvaluationStatistics()
         }
@@ -166,7 +169,7 @@ class ScyllaRDFSailConnection(
         } else {
             contexts.filterNotNull()
                     .stream()
-                    .map { cardinalityDao.contextCardinality(sail.getCoder().encode(it)) }
+                    .map { cardinalityDao.contextCardinality(coder.encode(it)) }
                     .reduce { a: Long, b: Long -> a + b }
                     .orElse(0)
         }
@@ -179,7 +182,7 @@ class ScyllaRDFSailConnection(
             cardinalityDao.clearContext(null)
         } else {
             contexts.forEach { context ->
-                sail.getCoder().encode(context).let {
+                coder.encode(context).let {
                     indexDao.clearContext(it)
                     cardinalityDao.clearContext(it)
                 }

@@ -35,7 +35,7 @@ class MultipleResultSetFutureIteration(private val futures: List<ResultSetFuture
     override fun hasNext(): Boolean {
         while (resultSet == null || !iterator.hasNext()) {
             if (futures.isNotEmpty() && futureIdx < futures.size) {
-                resultSet = futures[futureIdx].get()
+                resultSet = futures[futureIdx].uninterruptibly
                 iterator = resultSet!!.iterator()
 
                 futureIdx++;

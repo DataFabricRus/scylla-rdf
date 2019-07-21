@@ -37,7 +37,8 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
             this,
             daoFactory.getIndexDAO(),
             daoFactory.getCardinalityDAO(),
-            config.cardinalityEstimationEnabled
+            config.cardinalityEstimationEnabled,
+            coder
         )
     }
 
@@ -53,8 +54,4 @@ class ScyllaRDFSail(private val config: ScyllaRDFSailConfig) : AbstractNotifying
         daoFactory.close()
     }
 
-
-    fun getCoder(): ICoderFacade {
-        return coder
-    }
 }
