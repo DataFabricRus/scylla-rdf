@@ -4,10 +4,11 @@ import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
 import org.cassandraunit.AbstractCassandraUnit4CQLTestCase
 import org.cassandraunit.dataset.cql.ClassPathCQLDataSet
 import org.eclipse.rdf4j.common.iteration.Iterations
-import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
 
 class ScyllaRDFIndexDAOTest : AbstractCassandraUnit4CQLTestCase() {
@@ -37,7 +38,7 @@ class ScyllaRDFIndexDAOTest : AbstractCassandraUnit4CQLTestCase() {
     override fun getDataSet() = ClassPathCQLDataSet(
             "cc/datafabric/scyllardf/empty.cql", true, true)
 
-    @Before
+    @BeforeEach
     fun beforeEach() {
         super.before()
 
@@ -46,7 +47,7 @@ class ScyllaRDFIndexDAOTest : AbstractCassandraUnit4CQLTestCase() {
         dao.prepareStatements()
     }
 
-    @After
+    @AfterEach
     fun afterEach() {
         super.after()
     }
@@ -109,6 +110,45 @@ class ScyllaRDFIndexDAOTest : AbstractCassandraUnit4CQLTestCase() {
         assertEquals(namespace, pair[1])
 
         dao.clearNamespaces()
+    }
+
+    /**
+     * Prepared based on issue#9.
+     */
+    @Test
+    fun testGetStatementsOnEmptyStore() {
+        //Nothing is set
+        assertFalse { dao.getStatements(null, null, null, null).hasNext() }
+        //By O
+        assertFalse { dao.getStatements(null, null, obj, null).hasNext() }
+        //By P
+        assertFalse { dao.getStatements(null, pred, null, null).hasNext() }
+        //By PO
+        assertFalse { dao.getStatements(null, pred, obj, null).hasNext() }
+        //By S
+        assertFalse { dao.getStatements(subj, null, null, null).hasNext() }
+        //By OS
+        assertFalse { dao.getStatements(subj, null, obj, null).hasNext() }
+        //By SP
+        assertFalse { dao.getStatements(subj, pred, null, null).hasNext() }
+        //By SPO
+        assertFalse { dao.getStatements(subj, pred, obj, null).hasNext() }
+        //By C
+        assertFalse { dao.getStatements(null, null, null, graph1).hasNext() }
+        //By CO
+        assertFalse { dao.getStatements(null, null, obj, graph1).hasNext() }
+        //By CP
+        assertFalse { dao.getStatements(null, pred, null, graph1).hasNext() }
+        //By CPO
+        assertFalse { dao.getStatements(null, pred, obj, graph1).hasNext() }
+        //By CS
+        assertFalse { dao.getStatements(subj, null, null, graph1).hasNext() }
+        //By COS
+        assertFalse { dao.getStatements(subj, null, obj, graph1).hasNext() }
+        //By CSP
+        assertFalse { dao.getStatements(subj, pred, null, graph1).hasNext() }
+        //By CSPO
+        assertFalse { dao.getStatements(subj, pred, obj, graph1).hasNext() }
     }
 
     private fun checkAllTables(expected: Int, subj: ByteBuffer, pred: ByteBuffer, obj: ByteBuffer, context: ByteBuffer) {

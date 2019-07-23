@@ -103,4 +103,40 @@ class SomeQueriesTest : AbstractCassandraUnit4CQLTestCase() {
         assertFalse(result.hasNext())
     }
 
+    @Test
+    fun testIssue9Query2() {
+        val query = """
+            SELECT ?s ?o
+            WHERE {
+                GRAPH <http://example.com/graphname> { 
+                    ?s a ?o . 
+                } 
+            }
+        """
+
+        val tupleQuery = repository.connection.prepareTupleQuery(QueryLanguage.SPARQL, query)
+        val result = tupleQuery.evaluate()
+
+        assertFalse(result.hasNext())
+    }
+
+    @Test
+    fun testIssue9Query3() {
+        val query = """
+            PREFIX : <http://example.com/>
+            
+            SELECT ?s ?o
+            WHERE {
+                GRAPH <http://example.com/graphname> { 
+                    ?s a/rdfs:subClassOf+ :ClassName . 
+                } 
+            }
+        """
+
+        val tupleQuery = repository.connection.prepareTupleQuery(QueryLanguage.SPARQL, query)
+        val result = tupleQuery.evaluate()
+
+        assertFalse(result.hasNext())
+    }
+
 }
