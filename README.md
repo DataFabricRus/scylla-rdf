@@ -37,14 +37,6 @@ We benchmark new features, the results available in https://github.com/DataFabri
 
 ## Build from sources
 
-The code depends on the SNAPSHOT versions of some libraries, so you need to build them locally and make sure their 
-artifacts end up into the local Maven repository. The libraries:
-
-  * ScyllaDB Java Driver (the fork of Cassandra Java Driver). Use the [3.7.1-scylla](https://github.com/scylladb/java-driver/tree/3.7.1-scylla) branch.
-  * Eclipse RDF4J (i.e. [rdf4j](https://github.com/eclipse/rdf4j), [rdf4j-storage](https://github.com/eclipse/rdf4j-storage) and [rdf4j-tools](https://github.com/eclipse/rdf4j-tools)). Use the `develop` branch.
-
-After that you need to build Scylla-RDF with:
-
 ```bash
 $ mvn clean install
 $ docker-compose -f docker-compose-dev.yml build
