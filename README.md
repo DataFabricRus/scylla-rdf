@@ -20,7 +20,7 @@ $ docker-compose -f docker-compose-dev.yml up -d
 For production, you need to deploy ScyllaDB and Elasticsearch separately. And use 
 [docker-compose-prod.yml](./docker-compose-prod.yml) to deploy Scylla-RDF. Scylla-RDF were tested with:
 
-  * ScyllaDB 3.0.8
+  * ScyllaDB 3.0.10
   * Elasticsearch 6.5.4
   
 In both cases, after the deployment, you need to create a repository via the RDF4J Workbench Console which'll be available 

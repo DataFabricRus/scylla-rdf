@@ -1,7 +1,7 @@
 version: "3"
 services:
   scylladb:
-    image: scylladb/scylla:3.0.8
+    image: scylladb/scylla:3.0.10
     command: --overprovisioned 1 --developer-mode 1
     ports:
       - 7000-7001:7000-7001
